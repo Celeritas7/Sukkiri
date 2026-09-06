@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+html, body { margin:0; padding:0; background:#f1f2ea; }
+a { color:#5c7a58; } a:hover { color:#d95c8a; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+@keyframes floaty2 { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(9px) scale(1.06); } }
+@keyframes twinkle { 0%, 100% { opacity:0.25; transform:scale(0.7); } 50% { opacity:1; transform:scale(1.15); } }
+@keyframes drift { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(9px, -5px); } }
+input::placeholder { color:#a8ad9f; }
+@page { size: A4; margin: 11mm; }
+@media print {
+  [data-noprint] { display:none !important; }
+  html, body { background:#fff !important; }
+  .sk-page { page-break-after:always; width:auto !important; border:none !important; box-shadow:none !important; margin:0 !important; }
+  .sk-page:last-child { page-break-after:auto; }
+}
+</style>
+</helmet>
+<div style="min-height:100vh; background:#f1f2ea; font-family:'Nunito',sans-serif; color:#3b4038;">
+  <div data-noprint="1" style="display:flex; align-items:center; flex-wrap:wrap; gap:14px; padding:14px 22px; background:#fbfbf6; border-bottom:1px solid #e0e3d6;">
+    <div style="display:flex; align-items:baseline; gap:8px; margin-right:8px;">
+      <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:24px; color:#3f5540;">Sukkiri</div>
+      <div style="font-size:12px; color:#a0a696; font-weight:700;">すっきり · room coach</div>
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">
+      <sc-for list="{{ navItems }}" as="nv" hint-placeholder-count="5">
+        <div onClick="{{ goNav }}" data-id="{{ nv.id }}" style="display:flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; cursor:pointer; background:{{ nv.bg }}; color:{{ nv.color }}; font-weight:800; font-size:13.5px; white-space:nowrap;" style-hover="filter:brightness(0.97);">
+          <span style="width:7px; height:7px; border-radius:50%; background:{{ nv.dot }};"></span>
+          <span>{{ nv.label }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex; align-items:center; gap:14px;">
+      <div style="text-align:right;">
+        <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:20px; color:#d95c8a; line-height:1;">{{ points }}</div>
+        <div style="font-size:11px; color:#a0a696; font-weight:700;">points</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:20px; color:#5c7a58; line-height:1;">{{ streak }}</div>
+        <div style="font-size:11px; color:#a0a696; font-weight:700;">week streak</div>
+      </div>
+    </div>
+  </div>
+  <div style="max-width:960px; margin:0 auto; padding:26px 20px 60px;">
+    <input type="file" accept="image/*" ref="{{ fileRef }}" onChange="{{ onFileChosen }}" style="display:none;">
+
+    <sc-if value="{{ hasNotice }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex; align-items:center; gap:12px; background:#fbe9f0; border:1px solid #f2cdda; border-radius:14px; padding:12px 16px; margin-bottom:20px;">
+        <div style="flex:1; font-size:14px; font-weight:700; color:#a83e66;">{{ noticeText }}</div>
+        <div onClick="{{ dismissNotice }}" style="cursor:pointer; color:#c98aa4; font-weight:800; padding:2px 8px;" style-hover="color:#a83e66;">✕</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isToday }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <div style="display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+          <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0; color:#3b4038;">Today's tasks</h1>
+          <div style="font-size:13.5px; color:#8b917f; font-weight:700;">{{ todayLabel }}</div>
+        </div>
+        <div style="position:relative; overflow:hidden; background:#e7eee4; border:1px solid #d5dfcf; border-radius:22px; padding:24px 26px; margin:14px 0 18px; display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
+          <div style="position:absolute; top:-34px; right:-24px; width:140px; height:140px; border-radius:50%; background:#fbe9f0; opacity:0.8; animation:floaty 7s ease-in-out infinite;"></div>
+          <div style="position:absolute; bottom:-26px; right:120px; width:80px; height:80px; border-radius:50%; background:#f7edd8; opacity:0.85; animation:floaty2 9s ease-in-out infinite;"></div>
+          <div style="position:absolute; top:18px; right:190px; width:26px; height:26px; border-radius:50%; background:#cfe0c8; animation:floaty 5s ease-in-out infinite;"></div>
+          <div style="position:absolute; bottom:14px; left:38%; width:14px; height:14px; border-radius:50%; background:#f2cdda; animation:floaty2 6s ease-in-out infinite;"></div>
+          <div style="position:relative; width:104px; height:104px; border-radius:50%; background:conic-gradient({{ ringGrad }}); display:flex; align-items:center; justify-content:center; transition:background 0.6s;">
+            <div style="width:82px; height:82px; border-radius:50%; background:#fcfcf9; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+              <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:26px; color:#3f5540; line-height:1;">{{ health }}</div>
+              <div style="font-size:9.5px; font-weight:800; color:#9aa08e; letter-spacing:0.08em;">HEALTH</div>
+            </div>
+          </div>
+          <div style="position:relative; flex:1; min-width:220px;">
+            <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:19px; color:#3f5540; margin-bottom:4px;">{{ heroTitle }}</div>
+            <div style="font-size:14px; color:#68705f; font-weight:600; max-width:420px;">{{ coachMsg }}</div>
+          </div>
+          <svg viewBox="0 0 230 150" width="230" style="position:relative; flex-shrink:0; max-width:100%; height:auto; animation:floaty 6s ease-in-out infinite;">
+            <ellipse cx="115" cy="136" rx="100" ry="10" fill="#dbe3d4"></ellipse>
+            <rect x="22" y="14" width="64" height="50" rx="7" fill="#fbfbf6" stroke="#cfd4c2" stroke-width="2"></rect>
+            <circle cx="54" cy="39" r="13" fill="#f7edd8"></circle>
+            <line x1="54" y1="16" x2="54" y2="62" stroke="#cfd4c2" stroke-width="2"></line>
+            <line x1="24" y1="39" x2="84" y2="39" stroke="#cfd4c2" stroke-width="2"></line>
+            <path d="M88 12 q10 26 0 54 l10 0 q-6 -28 0 -54 z" fill="#f2cdda"></path>
+            <rect x="118" y="80" width="10" height="42" rx="4" fill="#5c7a58"></rect>
+            <rect x="118" y="88" width="92" height="30" rx="9" fill="#fbfbf6" stroke="#cfd4c2" stroke-width="2"></rect>
+            <rect x="132" y="76" width="26" height="14" rx="6" fill="#f2cdda"></rect>
+            <path d="M160 89 h44 q6 0 6 6 v8 q0 6 -6 6 h-44 z" fill="#cfe0c8"></path>
+            <rect x="124" y="118" width="6" height="13" rx="2" fill="#b9beac"></rect>
+            <rect x="200" y="118" width="6" height="13" rx="2" fill="#b9beac"></rect>
+            <path d="M32 108 h22 l-4 22 h-14 z" fill="#c98aa4"></path>
+            <ellipse cx="34" cy="98" rx="8" ry="13" fill="#5c7a58" transform="rotate(-24 34 98)"></ellipse>
+            <ellipse cx="52" cy="98" rx="8" ry="13" fill="#7a9a76" transform="rotate(24 52 98)"></ellipse>
+            <ellipse cx="43" cy="92" rx="7" ry="14" fill="#6b8a67"></ellipse>
+            <g opacity="{{ sparkleOp }}" style="transition:opacity 0.6s;">
+              <path d="M104 30 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3 z" fill="#d95c8a" style="animation:twinkle 2.2s ease-in-out infinite; transform-box:fill-box; transform-origin:center;"></path>
+              <path d="M186 48 l2.4 6.4 6.4 2.4 -6.4 2.4 -2.4 6.4 -2.4 -6.4 -6.4 -2.4 6.4 -2.4 z" fill="#e8a5c0" style="animation:twinkle 2.8s ease-in-out 0.5s infinite; transform-box:fill-box; transform-origin:center;"></path>
+              <path d="M142 40 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 z" fill="#5c7a58" style="animation:twinkle 3.2s ease-in-out 1s infinite; transform-box:fill-box; transform-origin:center;"></path>
+            </g>
+            <g opacity="{{ dustOp }}" style="transition:opacity 0.6s;">
+              <circle cx="106" cy="127" r="5" fill="#b9beac" style="animation:drift 4s ease-in-out infinite;"></circle>
+              <circle cx="94" cy="121" r="3.5" fill="#c7ccbb" style="animation:drift 5s ease-in-out 0.8s infinite;"></circle>
+              <circle cx="118" cy="120" r="2.5" fill="#c7ccbb" style="animation:drift 4.5s ease-in-out 1.4s infinite;"></circle>
+            </g>
+          </svg>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:16px;">
+          <sc-for list="{{ statCards }}" as="st" hint-placeholder-count="3">
+            <div onClick="{{ goNav }}" data-id="{{ st.nav }}" style="display:flex; align-items:center; gap:12px; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 16px; cursor:pointer; transition:transform 0.18s, box-shadow 0.18s;" style-hover="transform:translateY(-2px); box-shadow:0 8px 18px rgba(59,64,56,0.09);">
+              <div style="width:40px; height:40px; border-radius:13px; background:{{ st.iconBg }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <svg viewBox="0 0 24 24" width="21" height="21"><path d="{{ st.icon }}" fill="{{ st.color }}" fill-rule="evenodd"></path></svg>
+              </div>
+              <div>
+                <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:21px; color:{{ st.color }}; line-height:1.1;">{{ st.value }}</div>
+                <div style="font-size:12px; font-weight:700; color:#9aa08e; margin-top:3px;">{{ st.label }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ hasGarbReminder }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:{{ garbReminderBg }}; border:1px solid {{ garbReminderBorder }}; border-radius:16px; padding:14px 18px; margin-bottom:16px;">
+            <div style="font-size:20px;">🗑</div>
+            <div style="flex:1; min-width:180px;">
+              <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:16px; color:{{ garbReminderColor }};">{{ garbReminderJp }}</div>
+              <div style="font-size:13.5px; color:#7c8274; font-weight:600;">{{ garbReminder }}</div>
+            </div>
+            <div onClick="{{ goNav }}" data-id="garbage" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 14px; border-radius:999px; border:1.5px solid {{ garbReminderColor }}; color:{{ garbReminderColor }}; white-space:nowrap;">Schedule</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ checkinDue }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; align-items:center; gap:14px; background:#e7eee4; border:1px solid #cfdcc9; border-radius:16px; padding:16px 18px; margin-bottom:16px;">
+            <div style="width:46px; height:46px; border-radius:15px; background:#fcfcf9; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <svg viewBox="0 0 24 24" width="24" height="24"><path d="M9 4 h6 l1.6 2.5 H20 a2 2 0 0 1 2 2 V18 a2 2 0 0 1 -2 2 H4 a2 2 0 0 1 -2 -2 V8.5 a2 2 0 0 1 2 -2 h3.4 Z M12 9 a4.2 4.2 0 1 0 0 8.4 a4.2 4.2 0 0 0 0 -8.4 Z" fill="#3f5540" fill-rule="evenodd"></path></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:16px; color:#3f5540;">Weekly photo check-in</div>
+              <div style="font-size:13px; color:#7c8274; font-weight:600;">{{ checkinDueLabel }}</div>
+            </div>
+            <div onClick="{{ goCheckin }}" style="background:#d95c8a; color:#fff; font-weight:800; font-size:13.5px; padding:10px 18px; border-radius:999px; cursor:pointer; white-space:nowrap;" style-hover="background:#c74a78;">Start check-in</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasNextHoliday }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; align-items:center; gap:14px; background:#fdf5f8; border:1px solid #f2cdda; border-radius:16px; padding:16px 18px; margin-bottom:16px;">
+            <div style="flex:1;">
+              <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:16px; color:#a83e66;">Deep clean: {{ nextHolName }}</div>
+              <div style="font-size:13px; color:#7c8274; font-weight:600;">{{ nextHolLabel }}</div>
+            </div>
+            <div onClick="{{ goDeep }}" style="background:#fff; border:1.5px solid #d95c8a; color:#d95c8a; font-weight:800; font-size:13.5px; padding:9px 18px; border-radius:999px; cursor:pointer; white-space:nowrap;" style-hover="background:#fbe9f0;">View plan</div>
+          </div>
+        </sc-if>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <sc-for list="{{ todayTasks }}" as="t" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 18px; transition:transform 0.18s, box-shadow 0.18s;" style-hover="transform:translateY(-2px); box-shadow:0 8px 20px rgba(59,64,56,0.09);">
+              <div style="width:42px; height:42px; border-radius:14px; background:{{ t.iconBg }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <svg viewBox="0 0 24 24" width="22" height="22"><path d="{{ t.icon }}" fill="{{ t.iconColor }}" fill-rule="evenodd"></path></svg>
+              </div>
+              <div style="flex:1; min-width:160px;">
+                <div style="font-weight:800; font-size:15.5px; color:#3b4038;">{{ t.name }}</div>
+                <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">{{ t.sub }}</div>
+              </div>
+              <div style="font-size:12.5px; font-weight:800; padding:5px 12px; border-radius:999px; background:{{ t.chipBg }}; color:{{ t.chipColor }};">{{ t.dueLabel }}</div>
+              <div onClick="{{ markDone }}" data-id="{{ t.id }}" style="background:#3f5540; color:#fff; font-weight:800; font-size:13px; padding:9px 16px; border-radius:999px; cursor:pointer; white-space:nowrap;" style-hover="background:#2e4030;">Mark done +10</div>
+              <div onClick="{{ deleteCycle }}" data-id="{{ t.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800; padding:4px;" style-hover="color:#d95c8a;">✕</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:26px; background:#fcfcf9; border:1px dashed #cfd4c2; border-radius:16px; padding:16px 18px;">
+          <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:10px;">Add a cleaning cycle</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <input value="{{ form.cycleName }}" data-field="cycleName" onChange="{{ onField }}" placeholder="e.g. Bathroom scrub" style="flex:2; min-width:180px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+            <input value="{{ form.cycleDays }}" data-field="cycleDays" onChange="{{ onField }}" type="number" min="1" placeholder="days" style="width:90px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+            <div onClick="{{ addCycle }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:#4a6647;">Add cycle</div>
+          </div>
+          <div style="font-size:12px; color:#a8ad9f; font-weight:600; margin-top:8px;">Cycles regenerate automatically each time you mark them done.</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCheckin }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Photo check-in</h1>
+        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">{{ checkinIntro }}</div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px;">
+          <sc-for list="{{ areasView }}" as="ar" hint-placeholder-count="5">
+            <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px;">
+              <div style="font-weight:800; font-size:15px; color:#3b4038; margin-bottom:10px;">{{ ar.name }}</div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div>
+                  <div style="font-size:11px; font-weight:800; color:#5c7a58; letter-spacing:0.06em; margin-bottom:6px;">IDEAL STATE</div>
+                  <sc-if value="{{ ar.hasIdeal }}" hint-placeholder-val="{{ false }}">
+                    <div onClick="{{ pickPhoto }}" data-area="{{ ar.id }}" data-kind="ideal" title="Locked — click to request replacement" style="cursor:pointer; position:relative; border-radius:10px; height:110px; border:2px solid #5c7a58; background-image:{{ ar.idealBg }}; background-size:cover; background-position:center;">
+                      <div style="position:absolute; bottom:6px; left:6px; background:rgba(63,85,64,0.88); color:#fff; font-size:10px; font-weight:800; padding:3px 9px; border-radius:999px; letter-spacing:0.06em;">LOCKED</div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ ar.noIdeal }}" hint-placeholder-val="{{ true }}">
+                    <div onClick="{{ pickPhoto }}" data-area="{{ ar.id }}" data-kind="ideal" style="cursor:pointer; height:110px; border:1.5px dashed #cfd4c2; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; color:#9aa08e; text-align:center; padding:6px; background:#f6f7f0;" style-hover="border-color:#5c7a58; color:#5c7a58;">＋ Add ideal photo</div>
+                  </sc-if>
+                </div>
+                <div>
+                  <div style="font-size:11px; font-weight:800; color:#d95c8a; letter-spacing:0.06em; margin-bottom:6px;">THIS WEEK</div>
+                  <sc-if value="{{ ar.hasCurrent }}" hint-placeholder-val="{{ false }}">
+                    <div onClick="{{ pickPhoto }}" data-area="{{ ar.id }}" data-kind="current" title="Click to replace" style="cursor:pointer; border-radius:10px; height:110px; border:1px solid #dde0d1; background-image:{{ ar.currentBg }}; background-size:cover; background-position:center;"></div>
+                  </sc-if>
+                  <sc-if value="{{ ar.noCurrent }}" hint-placeholder-val="{{ true }}">
+                    <div onClick="{{ pickPhoto }}" data-area="{{ ar.id }}" data-kind="current" style="cursor:pointer; height:110px; border:1.5px dashed #f2cdda; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; color:#c98aa4; text-align:center; padding:6px; background:#fdf5f8;" style-hover="border-color:#d95c8a; color:#d95c8a;">＋ Add this week's photo</div>
+                  </sc-if>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:20px; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:16px 18px;">
+          <div style="flex:1; min-width:180px;">
+            <div style="font-weight:800; font-size:15px; color:#3b4038;">{{ readyLabel }}</div>
+            <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">Claude compares each pair and writes your cleaning instructions.</div>
+          </div>
+          <sc-if value="{{ inspecting }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; align-items:center; gap:10px; color:#d95c8a; font-weight:800; font-size:14px;">
+              <div style="width:18px; height:18px; border:3px solid #f2cdda; border-top-color:#d95c8a; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+              Inspecting your room…
+            </div>
+          </sc-if>
+          <sc-if value="{{ notInspecting }}" hint-placeholder-val="{{ true }}">
+            <button onClick="{{ runInspection }}" disabled="{{ inspectDisabled }}" style="background:#d95c8a; color:#fff; font-weight:800; font-size:14px; padding:12px 22px; border-radius:999px; cursor:pointer; border:none; font-family:'Nunito',sans-serif; white-space:nowrap; opacity:{{ inspectOpacity }};" style-hover="background:#c74a78;">Run inspection +20</button>
+          </sc-if>
+        </div>
+        <sc-if value="{{ hasInspectError }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:12px; font-size:13.5px; font-weight:700; color:#a83e66; background:#fbe9f0; border-radius:12px; padding:10px 14px;">{{ inspectError }}</div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isReports }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Inspection reports</h1>
+        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">Your room's history, newest first.</div>
+        <sc-if value="{{ noReports }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1.5px dashed #cfd4c2; border-radius:16px; padding:40px 20px; text-align:center; color:#9aa08e; font-weight:700; font-size:14.5px;">No reports yet — run your first photo check-in and the report will land here.</div>
+        </sc-if>
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <sc-for list="{{ reportsView }}" as="rp" hint-placeholder-count="1">
+            <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:18px; padding:20px;">
+              <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:14px;">
+                <div style="width:58px; height:58px; border-radius:50%; background:{{ rp.scoreBg }}; color:{{ rp.scoreColor }}; display:flex; align-items:center; justify-content:center; font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:20px;">{{ rp.overall }}</div>
+                <div style="flex:1; min-width:200px;">
+                  <div style="font-weight:800; font-size:15.5px; color:#3b4038;">{{ rp.dateLabel }}</div>
+                  <div style="font-size:13.5px; color:#7c8274; font-weight:600;">{{ rp.summary }}</div>
+                </div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:12px;">
+                <sc-for list="{{ rp.areas }}" as="ra" hint-placeholder-count="2">
+                  <div style="border-top:1px solid #ecefe2; padding-top:12px;">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;">
+                      <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ ra.name }}</div>
+                      <div style="font-size:12px; font-weight:800; padding:3px 10px; border-radius:999px; background:{{ ra.chipBg }}; color:{{ ra.chipColor }};">{{ ra.verdict }} · {{ ra.score }}</div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:6px;">
+                      <sc-for list="{{ ra.issues }}" as="line" hint-placeholder-count="0">
+                        <div style="font-size:13.5px; color:#8a5568; font-weight:600;">• {{ line }}</div>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:3px;">
+                      <sc-for list="{{ ra.steps }}" as="line" hint-placeholder-count="0">
+                        <div style="font-size:13.5px; color:#55604f; font-weight:600;">{{ line }}</div>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                      <sc-for list="{{ ra.suggested }}" as="sg" hint-placeholder-count="0">
+                        <div onClick="{{ addSuggested }}" data-name="{{ sg.name }}" data-price="{{ sg.price }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:6px 12px; border-radius:999px; border:1px solid #f2cdda; color:#a83e66; background:#fdf5f8;" style-hover="background:#fbe9f0;">＋ {{ sg.label }}</div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isDeep }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Deep-clean zone</h1>
+        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">Deep cleans are tied to your long holidays — track them here and Sukkiri builds a plan for each from your task pool, then reminds you on Today as the holiday nears.</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; background:#fcfcf9; border:1px dashed #cfd4c2; border-radius:16px; padding:16px 18px; margin-bottom:18px;">
+          <input value="{{ form.holName }}" data-field="holName" onChange="{{ onField }}" placeholder="Holiday name (e.g. Golden Week)" style="flex:2; min-width:180px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+          <input value="{{ form.holDate }}" data-field="holDate" onChange="{{ onField }}" type="date" style="border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+          <div onClick="{{ addHoliday }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:#4a6647;">Build plan</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:24px;">
+          <sc-for list="{{ holidaysView }}" as="h" hint-placeholder-count="0">
+            <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:18px;">
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+                <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:17px; color:#3f5540; flex:1;">{{ h.name }}</div>
+                <div style="font-size:12.5px; font-weight:800; color:#8b917f;">{{ h.dateLabel }}</div>
+                <div style="font-size:12.5px; font-weight:800; padding:4px 12px; border-radius:999px; background:#e7eee4; color:#5c7a58;">{{ h.progress }}</div>
+                <div onClick="{{ deleteHoliday }}" data-id="{{ h.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800;" style-hover="color:#d95c8a;">✕</div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <sc-for list="{{ h.tasks }}" as="tk" hint-placeholder-count="3">
+                  <div onClick="{{ toggleHolTask }}" data-hid="{{ h.id }}" data-idx="{{ tk.idx }}" style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:6px 8px; border-radius:10px;" style-hover="background:#f4f5ec;">
+                    <div style="width:20px; height:20px; border-radius:50%; border:2px solid {{ tk.circleBorder }}; background:{{ tk.circleBg }}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800;">{{ tk.mark }}</div>
+                    <div style="font-size:14px; font-weight:700; color:{{ tk.color }}; text-decoration:{{ tk.deco }};">{{ tk.name }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:16px 18px;">
+          <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:10px;">Deep-clean task pool</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+            <sc-for list="{{ poolView }}" as="p" hint-placeholder-count="3">
+              <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:#55604f; background:#eef0e4; border-radius:999px; padding:6px 8px 6px 14px;">
+                <span>{{ p.name }}</span>
+                <span onClick="{{ removePoolTask }}" data-idx="{{ p.idx }}" style="cursor:pointer; color:#a8ad9f; font-weight:800;" style-hover="color:#d95c8a;">✕</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <input value="{{ form.poolTask }}" data-field="poolTask" onChange="{{ onField }}" placeholder="Add a deep-clean task (e.g. Curtain wash)" style="flex:1; min-width:200px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+            <div onClick="{{ addPoolTask }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center;" style-hover="background:#4a6647;">Add</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isShop }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Shopping list</h1>
+        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">Organizing gear to buy — inspection reports suggest items here too.</div>
+        <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 18px; margin-bottom:14px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="font-size:12.5px; font-weight:800; color:#8b917f;">Monthly budget ¥</div>
+            <input value="{{ budgetVal }}" onChange="{{ onBudget }}" type="number" min="0" style="width:100px; border:1px solid #dde0d1; border-radius:10px; padding:8px 12px; font-family:'Nunito',sans-serif; font-size:14px; font-weight:800; background:#fff; color:#3b4038; outline:none;">
+          </div>
+          <div style="font-size:13.5px; font-weight:800; color:#5c7a58;">{{ spentLabel }}</div>
+          <div style="font-size:13.5px; font-weight:800; color:{{ remainColor }};">{{ remainLabel }}</div>
+          <div style="flex:1;"></div>
+          <div onClick="{{ sendToCostApp }}" style="background:#d95c8a; border:1.5px solid #d95c8a; color:#fff; font-weight:800; font-size:12.5px; padding:8px 16px; border-radius:999px; cursor:pointer; white-space:nowrap;" style-hover="background:#c74a78;">Send request to cost app</div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; background:#fcfcf9; border:1px dashed #cfd4c2; border-radius:16px; padding:16px 18px; margin-bottom:18px;">
+          <input value="{{ form.shopName }}" data-field="shopName" onChange="{{ onField }}" placeholder="Item (e.g. Hanger set)" style="flex:2; min-width:150px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+          <input value="{{ form.shopPrice }}" data-field="shopPrice" onChange="{{ onField }}" type="number" min="0" placeholder="¥ price" style="width:110px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+          <input value="{{ form.shopLink }}" data-field="shopLink" onChange="{{ onField }}" placeholder="Link (optional)" style="flex:2; min-width:150px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+          <div onClick="{{ addShopItem }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center;" style-hover="background:#4a6647;">Add</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <sc-for list="{{ shopView }}" as="it" hint-placeholder-count="2">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:14px; padding:12px 16px; opacity:{{ it.opacity }};">
+              <div onClick="{{ toggleBought }}" data-id="{{ it.id }}" style="width:22px; height:22px; border-radius:50%; border:2px solid {{ it.circleBorder }}; background:{{ it.circleBg }}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; cursor:pointer;">{{ it.mark }}</div>
+              <div style="flex:1; min-width:140px;">
+                <div style="font-weight:800; font-size:14.5px; color:#3b4038; text-decoration:{{ it.deco }};">{{ it.name }}</div>
+                <sc-if value="{{ it.hasLink }}" hint-placeholder-val="{{ false }}">
+                  <a href="{{ it.link }}" target="_blank" style="font-size:12px; font-weight:700;">{{ it.link }}</a>
+                </sc-if>
+              </div>
+              <sc-if value="{{ it.suggested }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; background:#fbe9f0; color:#a83e66;">suggested by inspection</div>
+              </sc-if>
+              <div style="font-weight:800; font-size:14.5px; color:#5c7a58;">{{ it.priceLabel }}</div>
+              <div onClick="{{ deleteShopItem }}" data-id="{{ it.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800;" style-hover="color:#d95c8a;">✕</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:16px; text-align:right; font-weight:800; font-size:15px; color:#3f5540;">{{ totalLabel }}</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSupplies }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Supplies</h1>
+        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">Refills count from the last restock; when due they jump onto your shopping list automatically. One-time buys move to "Owned".</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; background:#fcfcf9; border:1px dashed #cfd4c2; border-radius:16px; padding:16px 18px; margin-bottom:18px;">
+          <input value="{{ form.supName }}" data-field="supName" onChange="{{ onField }}" placeholder="Supply (e.g. Sponges)" style="flex:2; min-width:150px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+          <select value="{{ form.supKind }}" data-field="supKind" onChange="{{ onField }}" style="border:1px solid #dde0d1; border-radius:10px; padding:10px 12px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+            <option value="refill">Refill</option>
+            <option value="onetime">One-time buy</option>
+          </select>
+          <input value="{{ form.supEvery }}" data-field="supEvery" onChange="{{ onField }}" type="number" min="1" placeholder="every N days" style="width:120px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+          <input value="{{ form.supPrice }}" data-field="supPrice" onChange="{{ onField }}" type="number" min="0" placeholder="¥ price" style="width:100px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+          <div onClick="{{ addSupply }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center;" style-hover="background:#4a6647;">Add</div>
+        </div>
+        <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:8px;">Refills</div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:22px;">
+          <sc-for list="{{ refillView }}" as="p" hint-placeholder-count="3">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:14px; padding:12px 16px;">
+              <div style="flex:1; min-width:150px;">
+                <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ p.name }}</div>
+                <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">{{ p.sub }}</div>
+              </div>
+              <div style="font-size:12.5px; font-weight:800; padding:5px 12px; border-radius:999px; background:{{ p.chipBg }}; color:{{ p.chipColor }};">{{ p.dueLabel }}</div>
+              <div style="font-weight:800; font-size:14px; color:#5c7a58;">{{ p.priceLabel }}</div>
+              <div onClick="{{ restock }}" data-id="{{ p.id }}" style="background:#3f5540; color:#fff; font-weight:800; font-size:12.5px; padding:8px 14px; border-radius:999px; cursor:pointer;" style-hover="background:#2e4030;">Restocked</div>
+              <div onClick="{{ deleteSupply }}" data-id="{{ p.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800;" style-hover="color:#d95c8a;">✕</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:8px;">One-time buys</div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:22px;">
+          <sc-for list="{{ onetimeView }}" as="p" hint-placeholder-count="2">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:14px; padding:12px 16px;">
+              <div style="flex:1; min-width:150px;">
+                <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ p.name }}</div>
+                <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">{{ p.sub }}</div>
+              </div>
+              <div style="font-weight:800; font-size:14px; color:#5c7a58;">{{ p.priceLabel }}</div>
+              <div onClick="{{ markOwned }}" data-id="{{ p.id }}" style="background:#3f5540; color:#fff; font-weight:800; font-size:12.5px; padding:8px 14px; border-radius:999px; cursor:pointer;" style-hover="background:#2e4030;">Bought it</div>
+              <div onClick="{{ deleteSupply }}" data-id="{{ p.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800;" style-hover="color:#d95c8a;">✕</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:8px;">Owned</div>
+        <sc-if value="{{ noOwned }}" hint-placeholder-val="{{ true }}">
+          <div style="font-size:13px; color:#9aa08e; font-weight:600;">Nothing owned yet — items land here once bought.</div>
+        </sc-if>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <sc-for list="{{ ownedView }}" as="p" hint-placeholder-count="0">
+            <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:#55604f; background:#eef0e4; border-radius:999px; padding:6px 8px 6px 14px;">
+              <span>✓ {{ p.name }}</span>
+              <span style="color:{{ p.replColor }}; font-weight:700;">{{ p.replLabel }}</span>
+              <span onClick="{{ unown }}" data-id="{{ p.id }}" title="Needs replacing" style="cursor:pointer; color:#a8ad9f; font-weight:800;" style-hover="color:#d95c8a;">↺</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isGarbage }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 4px; color:#3b4038;">Garbage days <span style="font-size:15px; color:#a0a696; font-weight:700;">ごみ収集</span></h1>
+        <div style="font-size:13px; font-weight:800; color:#5c7a58; margin-bottom:6px;">{{ garbageWard }}</div>
+        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">{{ garbageIntro }}</div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <sc-for list="{{ garbageCats }}" as="g" hint-placeholder-count="5">
+            <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 18px;">
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+                <div style="width:10px; height:26px; border-radius:4px; background:{{ g.color }}; flex-shrink:0;"></div>
+                <div style="flex:1; min-width:150px;">
+                  <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:16px; color:#3b4038;">{{ g.jp }}</div>
+                  <div style="font-size:12.5px; color:#9aa08e; font-weight:700;">{{ g.label }}</div>
+                </div>
+                <div style="font-size:12.5px; font-weight:800; color:{{ g.summaryColor }}; white-space:nowrap;">{{ g.summary }}</div>
+                <div onClick="{{ deleteGCat }}" data-id="{{ g.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800;" style-hover="color:#d95c8a;">✕</div>
+              </div>
+              <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                  <sc-for list="{{ g.dayChips }}" as="dc" hint-placeholder-count="7">
+                    <div onClick="{{ toggleGDay }}" data-id="{{ g.id }}" data-d="{{ dc.d }}" style="cursor:pointer; font-size:12px; font-weight:800; padding:6px 11px; border-radius:999px; border:1.5px solid {{ dc.border }}; background:{{ dc.bg }}; color:{{ dc.color }};">{{ dc.label }}</div>
+                  </sc-for>
+                </div>
+                <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
+                  <div style="font-size:11px; font-weight:800; color:#a8ad9f; letter-spacing:0.05em;">WEEKS</div>
+                  <sc-for list="{{ g.weekChips }}" as="wc" hint-placeholder-count="5">
+                    <div onClick="{{ toggleGWeek }}" data-id="{{ g.id }}" data-w="{{ wc.w }}" style="cursor:pointer; font-size:12px; font-weight:800; width:28px; text-align:center; padding:6px 0; border-radius:999px; border:1.5px solid {{ wc.border }}; background:{{ wc.bg }}; color:{{ wc.color }};">{{ wc.label }}</div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="margin-top:18px; background:#fcfcf9; border:1px dashed #cfd4c2; border-radius:16px; padding:16px 18px;">
+          <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:10px;">Add a category</div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <input value="{{ form.gJp }}" data-field="gJp" onChange="{{ onField }}" placeholder="日本語 (e.g. 有害ごみ)" style="flex:1; min-width:150px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+            <input value="{{ form.gLabel }}" data-field="gLabel" onChange="{{ onField }}" placeholder="English (e.g. Hazardous)" style="flex:1; min-width:150px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+            <div onClick="{{ addGCat }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:#4a6647;">Add</div>
+          </div>
+          <div style="font-size:12px; color:#a8ad9f; font-weight:600; margin-top:8px;">Days you set here appear on the print sheets, in the Today reminder, and get pushed to the calendar app.</div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isLog }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+          <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Activity log</h1>
+          <div onClick="{{ pushNow }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #5c7a58; color:#5c7a58; white-space:nowrap;" style-hover="background:#e7eee4;">Re-push cycles to calendar</div>
+        </div>
+        <div data-noprint="1" style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 18px; margin:14px 0 18px;">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="width:9px; height:9px; border-radius:50%; background:{{ cloudDot }}; flex-shrink:0;"></div>
+            <div style="flex:1; min-width:170px;">
+              <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ cloudTitle }}</div>
+              <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">{{ cloudSub }}</div>
+            </div>
+            <sc-if value="{{ cloudSignedIn }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <div onClick="{{ cloudPush }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #5c7a58; color:#5c7a58; white-space:nowrap;" style-hover="background:#e7eee4;">Back up now</div>
+                <div onClick="{{ cloudPull }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274; white-space:nowrap;" style-hover="background:#f4f5ec;">Restore</div>
+                <div onClick="{{ cloudOut }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; color:#c98aa4; white-space:nowrap;" style-hover="color:#a83e66;">Sign out</div>
+              </div>
+            </sc-if>
+          </div>
+          <sc-if value="{{ cloudSignedOut }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+              <input value="{{ form.cloudEmail }}" data-field="cloudEmail" onChange="{{ onField }}" type="email" placeholder="email" style="flex:1; min-width:150px; border:1px solid #dde0d1; border-radius:10px; padding:9px 13px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+              <input value="{{ form.cloudPass }}" data-field="cloudPass" onChange="{{ onField }}" type="password" placeholder="password" style="flex:1; min-width:130px; border:1px solid #dde0d1; border-radius:10px; padding:9px 13px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+              <div onClick="{{ cloudIn }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13px; padding:9px 18px; border-radius:999px; cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:#4a6647;">Sign in</div>
+              <div onClick="{{ cloudUp }}" style="cursor:pointer; font-size:13px; font-weight:800; padding:9px 14px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274; align-self:center; white-space:nowrap;" style-hover="background:#f4f5ec;">Create account</div>
+            </div>
+            <div style="font-size:12px; color:#a8ad9f; font-weight:600; margin-top:8px;">Same account as your calendar app. Without signing in, Sukkiri stays on this device only.</div>
+          </sc-if>
+        </div>
+        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">{{ logIntro }}</div>
+        <sc-if value="{{ noLog }}" hint-placeholder-val="{{ false }}">
+          <div style="border:1.5px dashed #cfd4c2; border-radius:16px; padding:32px 20px; text-align:center; color:#9aa08e; font-weight:700; font-size:14.5px;">Nothing logged yet — every done cycle, added item, and inspection lands here.</div>
+        </sc-if>
+        <div style="display:flex; flex-direction:column; gap:0;">
+          <sc-for list="{{ logView }}" as="l" hint-placeholder-count="4">
+            <div style="display:flex; gap:14px; padding:10px 4px; border-bottom:1px solid #ecefe2;">
+              <div style="width:10px; height:10px; border-radius:50%; background:{{ l.dot }}; margin-top:5px; flex-shrink:0;"></div>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:14px; font-weight:700; color:#3b4038;">{{ l.text }}</div>
+                <div style="font-size:12px; color:#9aa08e; font-weight:600;">{{ l.when }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isPrint }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div data-noprint="1">
+          <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Print sheets</h1>
+          <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:18px;">A4 sheets with empty boxes for handwritten checkmarks. Pick what to include, preview below, then print.</div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 18px; margin-bottom:22px;">
+            <div style="display:flex; gap:4px; background:#eef0e4; border-radius:999px; padding:4px;">
+              <sc-for list="{{ printModes }}" as="m" hint-placeholder-count="3">
+                <div onClick="{{ setPrintMode }}" data-mode="{{ m.id }}" style="cursor:pointer; font-size:13px; font-weight:800; padding:7px 16px; border-radius:999px; background:{{ m.bg }}; color:{{ m.color }};">{{ m.label }}</div>
+              </sc-for>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; flex:1;">
+              <sc-for list="{{ printParts }}" as="pp" hint-placeholder-count="6">
+                <div onClick="{{ togglePrintPart }}" data-key="{{ pp.key }}" style="cursor:pointer; display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:800; padding:6px 12px; border-radius:999px; border:1.5px solid {{ pp.border }}; background:{{ pp.bg }}; color:{{ pp.color }}; white-space:nowrap;">
+                  <span>{{ pp.mark }}</span><span>{{ pp.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div onClick="{{ doPrint }}" style="background:#d95c8a; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer;" style-hover="background:#c74a78;">Print</div>
+          </div>
+        </div>
+
+        <sc-if value="{{ showWeekSheet }}" hint-placeholder-val="{{ true }}">
+          <div class="sk-page" style="background:#fff; color:#3b4038; width:100%; max-width:760px; margin:0 auto 26px; border:1px solid #e0e3d6; box-shadow:0 10px 30px rgba(59,64,56,0.08); padding:28px 30px; box-sizing:border-box; font-family:'Nunito',sans-serif;">
+            <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px; border-bottom:2.5px solid #3f5540; padding-bottom:10px; margin-bottom:14px;">
+              <div>
+                <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:24px; color:#3f5540; line-height:1;">Sukkiri</div><div style="font-size:12px; color:#a0a696; font-weight:700; margin-top:3px; white-space:nowrap;">すっきり · weekly sheet</div>
+                <div style="font-size:13px; font-weight:700; color:#7c8274; margin-top:4px;">{{ weekRangeLabel }}</div>
+              </div>
+              <sc-if value="{{ print.points }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex; gap:10px;">
+                  <div style="border:1.5px solid #d95c8a; border-radius:12px; padding:6px 12px; text-align:center; min-width:70px;">
+                    <div style="font-size:10px; font-weight:800; color:#d95c8a; letter-spacing:0.06em;">POINTS</div>
+                    <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:18px; color:#3b4038;">{{ points }}</div>
+                  </div>
+                  <div style="border:1.5px solid #5c7a58; border-radius:12px; padding:6px 12px; text-align:center; min-width:70px;">
+                    <div style="font-size:10px; font-weight:800; color:#5c7a58; letter-spacing:0.06em;">STREAK</div>
+                    <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:18px; color:#3b4038;">{{ streak }}</div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="display:grid; grid-template-columns:minmax(150px, 1.6fr) repeat(7, 1fr); gap:0; border:1.5px solid #cfd4c2; border-radius:12px; overflow:hidden;">
+              <div style="padding:8px 10px; background:#eef0e4; font-size:11px; font-weight:800; color:#5c7a58; letter-spacing:0.06em;">CYCLE</div>
+              <sc-for list="{{ weekDays }}" as="wd" hint-placeholder-count="7">
+                <div style="padding:8px 4px; background:{{ wd.bg }}; text-align:center; border-left:1px solid #e0e3d6;">
+                  <div style="font-size:10.5px; font-weight:800; color:{{ wd.color }};">{{ wd.dow }}</div>
+                  <div style="font-family:'Zen Maru Gothic',sans-serif; font-size:15px; font-weight:900; color:#3b4038; line-height:1.1;">{{ wd.num }}</div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ print.cycles }}" hint-placeholder-val="{{ true }}">
+                <sc-for list="{{ weekRows }}" as="wr" hint-placeholder-count="6">
+                  <div style="display:contents;">
+                    <div style="padding:7px 10px; border-top:1px solid #e0e3d6; font-size:12.5px; font-weight:700; color:#3b4038; display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                      <span>{{ wr.name }}</span><span style="font-size:10px; color:#a0a696; font-weight:800;">{{ wr.every }}</span>
+                    </div>
+                    <sc-for list="{{ wr.cells }}" as="c" hint-placeholder-count="7">
+                      <div style="border-top:1px solid #e0e3d6; border-left:1px solid #e0e3d6; display:flex; align-items:center; justify-content:center; padding:5px; background:{{ c.bg }};">
+                        <div style="width:20px; height:20px; border:1.8px solid {{ c.border }}; border-radius:6px; background:{{ c.fill }};"></div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-for>
+              </sc-if>
+              <sc-if value="{{ print.checkin }}" hint-placeholder-val="{{ true }}">
+                <div style="display:contents;">
+                  <div style="padding:7px 10px; border-top:2px solid #f2cdda; font-size:12.5px; font-weight:800; color:#a83e66; background:#fdf5f8;">📷 Photo check-in</div>
+                  <sc-for list="{{ checkinCells }}" as="c" hint-placeholder-count="7">
+                    <div style="border-top:2px solid #f2cdda; border-left:1px solid #e0e3d6; display:flex; align-items:center; justify-content:center; padding:5px; background:#fdf5f8;">
+                      <div style="width:20px; height:20px; border:1.8px solid {{ c.border }}; border-radius:6px; background:{{ c.fill }};"></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ print.garbage }}" hint-placeholder-val="{{ true }}">
+                <div style="display:contents;">
+                  <div style="padding:7px 10px; border-top:2px solid #cfd4c2; font-size:12.5px; font-weight:800; color:#3f5540; background:#eef0e4;">🗑 Garbage out</div>
+                  <sc-for list="{{ weekGarbage }}" as="g" hint-placeholder-count="7">
+                    <div style="border-top:2px solid #cfd4c2; border-left:1px solid #e0e3d6; display:flex; flex-direction:column; align-items:center; gap:3px; padding:5px 2px; background:#f6f7f0;">
+                      <sc-for list="{{ g.tags }}" as="tg" hint-placeholder-count="0">
+                        <div style="font-size:9px; font-weight:800; color:#fff; background:{{ tg.color }}; border-radius:4px; padding:1px 4px; text-align:center; line-height:1.2;">{{ tg.short }}</div>
+                      </sc-for>
+                      <div style="width:16px; height:16px; border:1.6px solid {{ g.border }}; border-radius:5px;"></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;">
+              <sc-if value="{{ print.deep }}" hint-placeholder-val="{{ true }}">
+                <div style="border:1.5px solid #cfd4c2; border-radius:12px; padding:10px 12px;">
+                  <div style="font-size:11px; font-weight:800; color:#5c7a58; letter-spacing:0.06em; margin-bottom:6px;">DEEP-CLEAN POOL</div>
+                  <div style="display:flex; flex-direction:column; gap:5px;">
+                    <sc-for list="{{ poolView }}" as="p" hint-placeholder-count="3">
+                      <div style="display:flex; align-items:flex-start; gap:8px; font-size:12.5px; font-weight:700; color:#3b4038; line-height:1.3;">
+                        <div style="width:16px; height:16px; border:1.6px solid #9aa08e; border-radius:5px; flex-shrink:0;"></div><span style="min-width:0;">{{ p.name }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ print.notes }}" hint-placeholder-val="{{ true }}">
+                <div style="border:1.5px solid #cfd4c2; border-radius:12px; padding:10px 12px; min-height:110px; background:repeating-linear-gradient(to bottom, transparent 0 21px, #ecefe2 21px 22px); background-position:0 26px;">
+                  <div style="font-size:11px; font-weight:800; color:#5c7a58; letter-spacing:0.06em;">NOTES</div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="margin-top:12px; font-size:10.5px; color:#a0a696; font-weight:700; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 12px;"><span style="white-space:nowrap;">Filled boxes = due that day · empty = free tick</span><span style="white-space:nowrap;">Sukkiri · printed {{ printedOn }}</span></div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ showMonthSheet }}" hint-placeholder-val="{{ false }}">
+          <div class="sk-page" style="background:#fff; color:#3b4038; width:100%; max-width:760px; margin:0 auto 26px; border:1px solid #e0e3d6; box-shadow:0 10px 30px rgba(59,64,56,0.08); padding:28px 30px; box-sizing:border-box; font-family:'Nunito',sans-serif;">
+            <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px; border-bottom:2.5px solid #3f5540; padding-bottom:10px; margin-bottom:14px;">
+              <div>
+                <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:24px; color:#3f5540; line-height:1;">Sukkiri</div><div style="font-size:12px; color:#a0a696; font-weight:700; margin-top:3px; white-space:nowrap;">すっきり · monthly sheet</div>
+                <div style="font-size:13px; font-weight:700; color:#7c8274; margin-top:4px;">{{ monthLabel }}</div>
+              </div>
+              <sc-if value="{{ print.points }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex; gap:10px;">
+                  <div style="border:1.5px solid #d95c8a; border-radius:12px; padding:6px 12px; text-align:center; min-width:70px;">
+                    <div style="font-size:10px; font-weight:800; color:#d95c8a; letter-spacing:0.06em;">POINTS</div>
+                    <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:18px; color:#3b4038;">{{ points }}</div>
+                  </div>
+                  <div style="border:1.5px solid #5c7a58; border-radius:12px; padding:6px 12px; text-align:center; min-width:70px;">
+                    <div style="font-size:10px; font-weight:800; color:#5c7a58; letter-spacing:0.06em;">STREAK</div>
+                    <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:18px; color:#3b4038;">{{ streak }}</div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(7, 1fr); border:1.5px solid #cfd4c2; border-radius:12px; overflow:hidden;">
+              <sc-for list="{{ monthHead }}" as="mh" hint-placeholder-count="7">
+                <div style="padding:6px; background:#eef0e4; text-align:center; font-size:10.5px; font-weight:800; color:{{ mh.color }}; border-left:1px solid #e0e3d6;">{{ mh.label }}</div>
+              </sc-for>
+              <sc-for list="{{ monthCells }}" as="mc" hint-placeholder-count="35">
+                <div style="min-height:82px; border-top:1px solid #e0e3d6; border-left:1px solid #e0e3d6; padding:4px 5px; background:{{ mc.bg }}; display:flex; flex-direction:column; gap:3px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-family:'Zen Maru Gothic',sans-serif; font-size:13px; font-weight:900; color:{{ mc.numColor }};">{{ mc.num }}</div>
+                    <div style="width:14px; height:14px; border:1.5px solid {{ mc.boxBorder }}; border-radius:4px;"></div>
+                  </div>
+                  <sc-if value="{{ print.garbage }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex; gap:2px; flex-wrap:wrap;">
+                      <sc-for list="{{ mc.garbage }}" as="tg" hint-placeholder-count="0">
+                        <div style="font-size:7.5px; font-weight:800; color:#fff; background:{{ tg.color }}; border-radius:3px; padding:0 3px; line-height:1.5;">{{ tg.short }}</div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ print.cycles }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex; flex-direction:column; gap:1px;">
+                      <sc-for list="{{ mc.due }}" as="d" hint-placeholder-count="0">
+                        <div style="font-size:8.5px; font-weight:700; color:#3f5540; line-height:1.25; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">▢ {{ d }}</div>
+                      </sc-for>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ mc.isCheck }}" hint-placeholder-val="{{ false }}">
+                    <div style="margin-top:auto; font-size:8.5px; font-weight:800; color:#a83e66;">📷 photo check-in</div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;">
+              <sc-if value="{{ print.deep }}" hint-placeholder-val="{{ true }}">
+                <div style="border:1.5px solid #cfd4c2; border-radius:12px; padding:10px 12px;">
+                  <div style="font-size:11px; font-weight:800; color:#5c7a58; letter-spacing:0.06em; margin-bottom:6px;">DEEP-CLEAN POOL</div>
+                  <div style="display:flex; flex-direction:column; gap:5px;">
+                    <sc-for list="{{ poolView }}" as="p" hint-placeholder-count="3">
+                      <div style="display:flex; align-items:flex-start; gap:8px; font-size:12.5px; font-weight:700; color:#3b4038; line-height:1.3;">
+                        <div style="width:16px; height:16px; border:1.6px solid #9aa08e; border-radius:5px; flex-shrink:0;"></div><span style="min-width:0;">{{ p.name }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ print.notes }}" hint-placeholder-val="{{ true }}">
+                <div style="border:1.5px solid #cfd4c2; border-radius:12px; padding:10px 12px; min-height:90px; background:repeating-linear-gradient(to bottom, transparent 0 21px, #ecefe2 21px 22px); background-position:0 26px;">
+                  <div style="font-size:11px; font-weight:800; color:#5c7a58; letter-spacing:0.06em;">NOTES</div>
+                </div>
+              </sc-if>
+            </div>
+            <div style="margin-top:12px; font-size:10.5px; color:#a0a696; font-weight:700; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 12px;"><span style="white-space:nowrap;">▢ = cycle due that day · corner box = day done</span><span style="white-space:nowrap;">Sukkiri · printed {{ printedOn }}</span></div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;checkInDay&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Saturday&quot;,&quot;Sunday&quot;],&quot;default&quot;:&quot;Saturday&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;strictMode&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
+class Component extends DCLogic {
+  state = this.load();
+  D = 86400000;
+  KEY = 'sukkiri_v1';
+
+  seed() {
+    const now = Date.now(), D = 86400000;
+    return {
+      screen: 'today', points: 100, streak: 0,
+      cycles: [
+        { id: 'c1', name: 'Clothes wash', days: 4, last: now - 3 * D },
+        { id: 'c2', name: 'Room sweep & mop', days: 3, last: now - 3 * D },
+        { id: 'c3', name: 'Wardrobe organizing', days: 14, last: now - 7 * D },
+        { id: 'c4', name: 'Bedsheets & pillow covers', days: 14, last: now - 9 * D },
+        { id: 'c5', name: 'Bathroom deep clean', days: 14, last: now - 6 * D },
+        { id: 'c6', name: 'Fridge & kitchen', days: 28, last: now - 12 * D },
+        { id: 'c7', name: 'Aircon filter', days: 30, last: now - 20 * D },
+        { id: 'c8', name: 'Futon / blanket sun-dry', days: 30, last: now - 14 * D },
+        { id: 'c9', name: 'Trash bins wash', days: 30, last: now - 22 * D },
+        { id: 'c10', name: 'Desk wipe-down', days: 7, last: now - 4 * D },
+        { id: 'c11', name: 'Socks wash', days: 4, last: now - 2 * D },
+        { id: 'c12', name: 'Doormat cleaning', days: 14, last: now - 10 * D }
+      ],
+      supplies: [
+        { id: 'p1', name: 'Room fragrance', kind: 'refill', every: 30, price: 600, last: now - 24 * D, link: '' },
+        { id: 'p2', name: 'Tissue paper', kind: 'refill', every: 21, price: 400, last: now - 19 * D, link: '' },
+        { id: 'p3', name: 'Alcohol / sanitizer', kind: 'refill', every: 45, price: 500, last: now - 10 * D, link: '' },
+        { id: 'p4', name: 'Detergent', kind: 'refill', every: 30, price: 700, last: now - 26 * D, link: '' },
+        { id: 'p5', name: 'Trash bags', kind: 'refill', every: 30, price: 300, last: now - 12 * D, link: '' },
+        { id: 'p6', name: 'Dust collector pan', kind: 'onetime', price: 900, owned: false, replaceMonths: 0, link: '' },
+        { id: 'p7', name: 'Doormat', kind: 'onetime', price: 1500, owned: false, replaceMonths: 12, link: '' }
+      ],
+      log: [], lastPush: null, seedVersion: 2,
+      garbage: [
+        { id: 'g1', jp: '燃えるごみ', label: 'Burnable', short: '燃 BURN', icon: 'flame', days: [], weeks: [], color: '#c0392b' },
+        { id: 'g2', jp: '燃えないごみ', label: 'Non-burnable', short: '不燃 NON', icon: 'trash', days: [], weeks: [], color: '#7f8c8d' },
+        { id: 'g3', jp: 'プラスチック', label: 'Plastic', short: 'プラ PLA', icon: 'recycle', days: [], weeks: [], color: '#e67e22' },
+        { id: 'g4', jp: '缶・びん・PET', label: 'Cans / bottles / PET', short: '缶びん PET', icon: 'bottle', days: [], weeks: [], color: '#2980b9' },
+        { id: 'g5', jp: '紙・古紙', label: 'Paper / cardboard', short: '紙 PAPER', icon: 'paper', days: [], weeks: [], color: '#27ae60' }
+      ],
+      ward: 'Saitama-shi, Minami-ku',
+      print: { mode: 'week', cycles: true, checkin: true, garbage: true, deep: true, notes: true, points: true },
+      areas: [
+        { id: 'bed', name: 'Bed area', ideal: null, current: null },
+        { id: 'desk', name: 'Desk', ideal: null, current: null },
+        { id: 'wardrobe', name: 'Wardrobe / closet', ideal: null, current: null },
+        { id: 'floor', name: 'Floor', ideal: null, current: null },
+        { id: 'laundry', name: 'Laundry corner', ideal: null, current: null }
+      ],
+      reports: [], holidays: [],
+      pool: ['Mattress flip & sun-dry', 'Wardrobe full re-fold', 'Under-bed cleaning'],
+      shop: [
+        { id: 's1', name: 'Laundry basket', price: 1800, link: '', bought: false, suggested: false },
+        { id: 's2', name: 'Drawer organizers', price: 1200, link: '', bought: false, suggested: false }
+      ],
+      form: { cycleName: '', cycleDays: '7', holName: '', holDate: '', shopName: '', shopPrice: '', shopLink: '', poolTask: '', supName: '', supEvery: '30', supPrice: '', supKind: 'refill', cloudEmail: '', cloudPass: '', gLabel: '', gJp: '' },
+      savedAt: 0,
+      budget: 5000,
+      lastCheck: null, penalized: null, installed: now,
+      notice: '', inspecting: false, inspectError: '',
+      cloud: { status: 'off', email: '', msg: 'Local only — sign in to back up.' }
+    };
+  }
+
+  load() {
+    const seed = this.seed();
+    try {
+      const raw = localStorage.getItem('sukkiri_v1');
+      if (raw) {
+        const saved = JSON.parse(raw);
+        const s = Object.assign({}, seed, saved, { inspecting: false, inspectError: '', cloud: seed.cloud });
+        s.form = Object.assign({}, seed.form, saved.form || {});
+        const have = new Set((s.cycles || []).map(c => (c.name || '').toLowerCase()));
+        const missing = seed.cycles.filter(c => !have.has(c.name.toLowerCase()));
+        if (missing.length) { s.cycles = [...(s.cycles || []), ...missing]; this._migrated = true; }
+        if (!saved.supplies) s.supplies = seed.supplies;
+        s.seedVersion = 3;
+        if (!s.log) s.log = [];
+        if (!s.print) s.print = this.seed().print;
+        return s;
+      }
+    } catch (e) {}
+    return seed;
+  }
+
+save(patch, entry) {
+    this.setState(prev => {
+      const next = { ...patch };
+      if (entry) next.log = [{ ts: Date.now(), kind: entry.kind || 'info', text: entry.text }, ...(prev.log || [])].slice(0, 400);
+      return next;
+    }, () => {
+      const s = { ...this.state, inspecting: false, inspectError: '', savedAt: Date.now() };
+      delete s.cloud;
+      try { localStorage.setItem(this.KEY, JSON.stringify(s)); } catch (e) {}
+      this.pushCal(s);
+      this.queueCloud();
+    });
+  }
+
+  // ---------- Supabase cloud sync (sukkiri_state) ----------
+  SB_URL = 'https://wylxvmkcrexwfpjpbhyy.supabase.co';
+  SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5bHh2bWtjcmV4d2ZwanBiaHl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2MzkxMDYsImV4cCI6MjA4NDIxNTEwNn0.6Bxo42hx4jwlJGWnfjiTpiDUsYfc1QLTN3YtrU1efak';
+
+  cloudState(status, msg, email) {
+    this.setState(p => ({ cloud: { status, msg, email: email !== undefined ? email : p.cloud.email } }));
+  }
+
+  async initCloud() {
+    for (let i = 0; i < 40 && !(window.supabase && window.supabase.createClient); i++) await new Promise(r => setTimeout(r, 150));
+    if (!(window.supabase && window.supabase.createClient)) { this.cloudState('off', 'Cloud library unavailable — local only.'); return; }
+    this.sb = window.supabase.createClient(this.SB_URL, this.SB_KEY);
+    try {
+      const { data } = await this.sb.auth.getSession();
+      const u = data && data.session && data.session.user;
+      if (u) { this.uidCloud = u.id; this.cloudState('on', 'Signed in — syncing.', u.email); this.cloudPull(true); }
+      else this.cloudState('off', 'Local only — sign in to back up.');
+    } catch (e) { this.cloudState('off', 'Cloud unreachable — local only.'); }
+  }
+
+  payload() {
+    const s = { ...this.state, savedAt: Date.now() };
+    delete s.cloud; delete s.inspecting; delete s.inspectError; delete s.notice;
+    s.areas = (s.areas || []).map(a => ({ ...a, ideal: null, current: null }));
+    return s;
+  }
+
+  queueCloud() {
+    if (!this.sb || !this.uidCloud) return;
+    clearTimeout(this._cloudT);
+    this._cloudT = setTimeout(() => this.cloudPushNow(true), 2000);
+  }
+
+  async cloudPushNow(quiet) {
+    if (!this.sb || !this.uidCloud) return;
+    this.cloudState('busy', 'Backing up…');
+    const { error } = await this.sb.from('sukkiri_state').upsert(
+      { user_id: this.uidCloud, payload: this.payload(), updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+    if (error) this.cloudState('err', 'Backup failed: ' + error.message);
+    else { this.cloudState('on', 'Backed up ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })); if (!quiet) this.save({ notice: 'Backed up to your account.' }); }
+  }
+
+  async cloudPull(auto) {
+    if (!this.sb || !this.uidCloud) return;
+    this.cloudState('busy', 'Checking your account…');
+    const { data, error } = await this.sb.from('sukkiri_state').select('payload').eq('user_id', this.uidCloud).maybeSingle();
+    if (error) { this.cloudState('err', 'Restore failed: ' + error.message); return; }
+    const p = data && data.payload;
+    if (!p) { this.cloudState('on', 'No backup yet — saving this device.'); this.cloudPushNow(true); return; }
+    if (auto && (p.savedAt || 0) <= (this.state.savedAt || 0)) { this.cloudState('on', 'This device is up to date.'); return; }
+    const keep = (this.state.areas || []).reduce((m, a) => { m[a.id] = a; return m; }, {});
+    const merged = { ...p, areas: (p.areas || []).map(a => keep[a.id] ? { ...a, ideal: keep[a.id].ideal, current: keep[a.id].current } : a) };
+    delete merged.cloud;
+    this.save(merged, { kind: 'change', text: 'Restored data from your account' });
+    this.cloudState('on', 'Restored from ' + new Date(p.savedAt || Date.now()).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }));
+  }
+
+  async cloudAuth(mode) {
+    if (!this.sb) { this.cloudState('err', 'Cloud not ready yet — try again.'); return; }
+    const email = (this.state.form.cloudEmail || '').trim(), password = this.state.form.cloudPass || '';
+    if (!email || !password) { this.cloudState('err', 'Enter your email and password.'); return; }
+    this.cloudState('busy', mode === 'up' ? 'Creating account…' : 'Signing in…');
+    const fn = mode === 'up' ? 'signUp' : 'signInWithPassword';
+    const { data, error } = await this.sb.auth[fn]({ email, password });
+    if (error) { this.cloudState('err', error.message); return; }
+    const u = data && data.user;
+    if (mode === 'up' && !(data.session)) { this.cloudState('off', '✓ Check your email to confirm your account!'); return; }
+    this.uidCloud = u.id;
+    this.save({ form: { ...this.state.form, cloudPass: '' } });
+    this.cloudState('on', 'Signed in — syncing.', u.email);
+    this.cloudPull(true);
+  }
+
+  async cloudSignOut() {
+    if (this.sb) { try { await this.sb.auth.signOut(); } catch (e) {} }
+    this.uidCloud = null;
+    this.cloudState('off', 'Signed out — local only.', '');
+  }
+
+  // ---------- calendar sync (calapp_sukkiri) ----------
+  dkey(ts) { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+  pushCal(st) {
+    const COL = ['#c0392b', '#e67e22', '#2980b9', '#27ae60', '#8e44ad', '#16a085', '#7f8c8d'];
+    try {
+      const raw = localStorage.getItem('calapp_sukkiri');
+      const p = raw ? JSON.parse(raw) : {};
+      if (p.show === undefined) p.show = true;
+      if (p.wm === undefined) p.wm = true;
+      if (!p.block) p.block = { urg: true, any: false, away: true, hol: false };
+      if (!p.garbage) p.garbage = [];
+      if (!p.overrides) p.overrides = {};
+      if (!p.done) p.done = {};
+      if (!p.away) p.away = [];
+      const mineG = (st.garbage || []).filter(g => (g.days || []).length);
+      if (mineG.length) p.garbage = mineG.map(g => ({
+        id: g.id, label: g.jp ? g.jp + ' / ' + g.label : g.label, short: g.short,
+        icon: g.icon, days: g.days, weeks: g.weeks || [], color: g.color
+      }));
+      p.cycles = (st.cycles || []).map((c, i) => ({
+        id: 'sk_' + c.id, name: c.name, every: c.days,
+        anchor: this.dkey(c.last + c.days * this.D), color: c.color || COL[(i + 4) % COL.length]
+      }));
+      localStorage.setItem('calapp_sukkiri', JSON.stringify(p));
+      return true;
+    } catch (e) { return false; }
+  }
+
+  // ---------- garbage rules (read from the calendar if it has them) ----------
+  gcats() {
+    const mine = (this.state.garbage || []).filter(g => (g.days || []).length);
+    if (mine.length) return mine;
+    try {
+      const p = JSON.parse(localStorage.getItem('calapp_sukkiri') || 'null');
+      if (p && p.garbage && p.garbage.length) return p.garbage;
+    } catch (e) {}
+    return [];
+  }
+  garbOn(d) {
+    const dow = d.getDay(), nth = Math.ceil(d.getDate() / 7);
+    return this.gcats().filter(g => (g.days || []).includes(dow) && (!(g.weeks || []).length || (g.weeks || []).includes(nth)));
+  }
+  dueOn(c, d) {
+    const t = new Date(c.last); t.setHours(0, 0, 0, 0);
+    const target = new Date(d); target.setHours(0, 0, 0, 0);
+    const diff = Math.round((target - t) / this.D);
+    return diff > 0 && diff % c.days === 0;
+  }
+
+  // ---------- supplies → shopping ----------
+  syncSupplies() {
+    const S = this.state, now = Date.now();
+    const add = [];
+    (S.supplies || []).forEach(p => {
+      const open = (S.shop || []).some(i => i.supplyId === p.id && !i.bought);
+      if (open) return;
+      const due = p.kind === 'refill' ? (p.last || 0) + p.every * this.D <= now : !p.owned;
+      if (due) add.push({ id: this.uid('s'), name: p.name, price: p.price || 0, link: p.link || '', bought: false, suggested: false, supplyId: p.id });
+    });
+    if (add.length) this.save(
+      { shop: [...(S.shop || []), ...add] },
+      { kind: 'supply', text: `${add.length} suppl${add.length > 1 ? 'ies' : 'y'} due for restock — added to shopping (${add.map(a => a.name).join(', ')})` }
+    );
+  }
+
+  componentDidMount() {
+    const s = this.state, D = this.D;
+    const strict = this.props.strictMode ?? false;
+    const pen = strict ? 30 : 15;
+    const dow = (this.props.checkInDay ?? 'Saturday') === 'Sunday' ? 0 : 6;
+    const from = Math.max(s.penalized || 0, s.lastCheck || 0, s.installed || 0);
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    let d = new Date(from + D); d.setHours(0, 0, 0, 0);
+    let missed = 0;
+    while (d.getTime() < today.getTime() && missed < 52) {
+      if (d.getDay() === dow && d.getTime() > from) missed++;
+      d = new Date(d.getTime() + D);
+    }
+    if (missed > 0) {
+      const msg = strict
+        ? `${missed} check-in${missed > 1 ? 's' : ''} skipped. −${missed * pen} points and streak reset. No excuses this week.`
+        : `You missed ${missed} photo check-in${missed > 1 ? 's' : ''} (−${missed * pen} points). Fresh week, fresh start — you've got this!`;
+      this.save({ points: Math.max(0, s.points - missed * pen), streak: 0, penalized: Date.now(), notice: msg },
+        { kind: 'penalty', text: `Missed ${missed} check-in${missed > 1 ? 's' : ''} — ${missed * pen} points lost, streak reset` });
+    }
+    if (this._migrated) { this._migrated = false; this.save({}, { kind: 'change', text: `Seeded ${this.state.cycles.length} cleaning & maintenance cycles` }); }
+    this.pushCal(this.state);
+    this.syncSupplies();
+    this.initCloud();
+  }
+
+  // ---------- helpers ----------
+  fmtDate(ts) { return new Date(ts).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); }
+  uid(p) { return p + Date.now() + Math.floor(Math.random() * 999); }
+  nextCheckDate() {
+    const dow = (this.props.checkInDay ?? 'Saturday') === 'Sunday' ? 0 : 6;
+    const d = new Date(); d.setHours(0, 0, 0, 0);
+    while (d.getDay() !== dow) d.setDate(d.getDate() + 1);
+    return d;
+  }
+  compress(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onerror = rej;
+      r.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const max = 900, sc = Math.min(1, max / Math.max(img.width, img.height));
+          const c = document.createElement('canvas');
+          c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          res(c.toDataURL('image/jpeg', 0.78));
+        };
+        img.onerror = rej;
+        img.src = r.result;
+      };
+      r.readAsDataURL(file);
+    });
+  }
+
+  // ---------- inspection ----------
+  async inspect() {
+    const pairs = this.state.areas.filter(a => a.ideal && a.current);
+    if (!pairs.length || this.state.inspecting) return;
+    this.setState({ inspecting: true, inspectError: '' });
+    const strict = this.props.strictMode ?? false;
+    const tone = strict ? 'a strict, no-nonsense inspector' : 'a warm, encouraging cleaning coach';
+    const content = [{
+      type: 'text',
+      text: `You are Sukkiri, ${tone} monitoring one person's room. For each area below you get two photos: first the IDEAL (clean reference) state, second the CURRENT state this week. Compare them carefully.\nRespond with ONLY valid JSON, no markdown fences:\n{"overall": <0-100 average tidiness>, "summary": "<one friendly sentence about the room overall>", "areas": [{"area": "<name>", "score": <0-100>, "verdict": "clean" | "needs attention" | "untidy", "issues": ["<specific things that differ from ideal>"], "instructions": ["<concrete cleaning step>"], "suggestedItems": [{"name": "<organizing product that would genuinely help>", "priceYen": <approx price in Japanese yen>}]}]}\nRules: issues and instructions must reference what is visible in the photos. Keep instructions actionable (2-5 steps). suggestedItems only when a product would clearly help; otherwise empty array.`
+    }];
+    for (const a of pairs) {
+      content.push({ type: 'text', text: `AREA: ${a.name} — first image IDEAL, second image CURRENT.` });
+      for (const k of ['ideal', 'current']) {
+        const m = a[k].match(/^data:(image\/\w+);base64,(.*)$/s);
+        content.push({ type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } });
+      }
+    }
+    try {
+      const txt = await window.claude.complete({ max_tokens: 3000, messages: [{ role: 'user', content }] });
+      const json = JSON.parse(txt.slice(txt.indexOf('{'), txt.lastIndexOf('}') + 1));
+      const report = {
+        id: this.uid('r'), date: Date.now(),
+        overall: Math.round(json.overall || 0), summary: json.summary || '',
+        areas: (json.areas || []).map(a => ({
+          area: a.area || '', score: Math.round(a.score || 0), verdict: a.verdict || 'needs attention',
+          issues: a.issues || [], instructions: a.instructions || [],
+          suggestedItems: (a.suggestedItems || []).map(x => ({ name: x.name || '', priceYen: Math.round(x.priceYen || 0) }))
+        }))
+      };
+      this.save({
+        reports: [report, ...this.state.reports],
+        points: this.state.points + 20, streak: this.state.streak + 1,
+        lastCheck: Date.now(), penalized: Date.now(),
+        areas: this.state.areas.map(a => ({ ...a, current: null })),
+        inspecting: false, screen: 'reports',
+        notice: strict ? `Inspection logged. Score ${report.overall}. +20 points.` : `Check-in complete — +20 points and your streak is now ${this.state.streak + 1} weeks. Report below!`
+      }, { kind: 'inspect', text: `Photo inspection: ${report.overall}/100 across ${report.areas.length} area${report.areas.length === 1 ? '' : 's'} (+20)` });
+    } catch (e) {
+      this.setState({ inspecting: false, inspectError: 'Inspection failed — please try again in a moment. (' + (e && e.message || 'error') + ')' });
+    }
+  }
+
+  suppliesVals(S, now) {
+    const D = this.D, sup = S.supplies || [];
+    const refillView = sup.filter(p => p.kind === 'refill').map(p => {
+      const days = Math.ceil(((p.last || 0) + p.every * D - now) / D);
+      let dueLabel, chipBg, chipColor;
+      if (days < 0) { dueLabel = `Overdue ${-days}d`; chipBg = '#fbe9f0'; chipColor = '#a83e66'; }
+      else if (days === 0) { dueLabel = 'Restock today'; chipBg = '#f7edd8'; chipColor = '#9a6c1c'; }
+      else { dueLabel = `Restock in ${days}d`; chipBg = '#e7eee4'; chipColor = '#5c7a58'; }
+      return { id: p.id, name: p.name, sub: `Every ${p.every} days · last restock ${this.fmtDate(p.last || now)}`, dueLabel, chipBg, chipColor, priceLabel: '¥' + (p.price || 0).toLocaleString(), _d: days };
+    }).sort((a, b) => a._d - b._d);
+    const onetimeView = sup.filter(p => p.kind === 'onetime' && !p.owned).map(p => ({
+      id: p.id, name: p.name, priceLabel: '¥' + (p.price || 0).toLocaleString(),
+      sub: p.replaceMonths ? `Replace every ${p.replaceMonths} months once owned` : 'Buy once'
+    }));
+    const ownedView = sup.filter(p => p.kind === 'onetime' && p.owned).map(p => {
+      let replLabel = '', replColor = '#9aa08e';
+      if (p.replaceMonths && p.ownedAt) {
+        const due = new Date(p.ownedAt); due.setMonth(due.getMonth() + p.replaceMonths);
+        const d = Math.ceil((due - now) / D);
+        replLabel = d < 0 ? '· replace now' : `· replace in ${d}d`; replColor = d < 30 ? '#a83e66' : '#9aa08e';
+      }
+      return { id: p.id, name: p.name, replLabel, replColor };
+    });
+    const upd = (id, fn, entry) => this.save({ supplies: sup.map(p => p.id === id ? fn(p) : p) }, entry);
+    return {
+      refillView, onetimeView, ownedView, noOwned: ownedView.length === 0,
+      restock: e => { const id = e.currentTarget.dataset.id, p = sup.find(x => x.id === id); upd(id, x => ({ ...x, last: Date.now() }), { kind: 'supply', text: `Restocked ${p ? p.name : 'supply'}` }); },
+      markOwned: e => { const id = e.currentTarget.dataset.id, p = sup.find(x => x.id === id); upd(id, x => ({ ...x, owned: true, ownedAt: Date.now() }), { kind: 'supply', text: `Bought ${p ? p.name : 'item'} — moved to Owned` }); },
+      unown: e => { const id = e.currentTarget.dataset.id, p = sup.find(x => x.id === id); upd(id, x => ({ ...x, owned: false }), { kind: 'supply', text: `${p ? p.name : 'Item'} marked for replacement` }); },
+      deleteSupply: e => { const id = e.currentTarget.dataset.id, p = sup.find(x => x.id === id); this.save({ supplies: sup.filter(x => x.id !== id) }, { kind: 'change', text: `Removed supply ${p ? p.name : ''}` }); },
+      addSupply: () => {
+        const f = S.form, name = (f.supName || '').trim(); if (!name) return;
+        const kind = f.supKind === 'onetime' ? 'onetime' : 'refill';
+        const p = { id: this.uid('p'), name, kind, price: parseInt(f.supPrice, 10) || 0, link: '' };
+        if (kind === 'refill') { p.every = Math.max(1, parseInt(f.supEvery, 10) || 30); p.last = Date.now(); } else { p.owned = false; p.replaceMonths = 0; }
+        this.save({ supplies: [...sup, p], form: { ...f, supName: '', supPrice: '' } }, { kind: 'change', text: `Added supply ${name} (${kind === 'refill' ? 'every ' + p.every + 'd' : 'one-time'})` });
+      }
+    };
+  }
+
+  garbageVals(S) {
+    const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const cats = S.garbage || [];
+    const upd = (id, fn, entry) => this.save({ garbage: cats.map(g => g.id === id ? fn(g) : g) }, entry);
+    const configured = cats.filter(g => (g.days || []).length).length;
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(now.getTime() + this.D);
+    const todayCats = this.garbOn(now), tomCats = this.garbOn(tomorrow);
+    let reminder = '', remJp = '', remKind = '';
+    const names = a => a.map(c => c.label || c.short || "").join(" + ");
+    const jps = a => a.map(c => c.jp || c.short || "").join("・");
+    if (todayCats.length) { remKind = 'today'; reminder = names(todayCats) + ' goes out this morning'; remJp = jps(todayCats); }
+    else if (tomCats.length) { remKind = 'eve'; reminder = names(tomCats) + ' goes out tomorrow morning — put it out tonight'; remJp = jps(tomCats); }
+    return {
+      garbageWard: S.ward || '',
+      garbageIntro: configured ? configured + ' of ' + cats.length + ' categories set. These feed your print sheets and the calendar app.' : 'No days set yet — tick the weekdays from your 市役所 collection calendar. Leave the week numbers empty for every-week pickup.',
+      garbageCats: cats.map(g => ({
+        id: g.id, jp: g.jp || '', label: g.label, short: g.short, color: g.color,
+        summary: (g.days || []).length
+          ? (g.days || []).map(d => DOW[d]).join(', ') + ((g.weeks || []).length ? ' · ' + (g.weeks || []).slice().sort().map(w => w + (w === 1 ? 'st' : w === 2 ? 'nd' : w === 3 ? 'rd' : 'th')).join(' & ') + ' week' : ' · every week')
+          : 'not set',
+        summaryColor: (g.days || []).length ? '#5c7a58' : '#c98aa4',
+        dayChips: [1, 2, 3, 4, 5, 6, 0].map(d => {
+          const on = (g.days || []).includes(d);
+          return { d: String(d), label: DOW[d], bg: on ? g.color : 'transparent', color: on ? '#fff' : '#9aa08e', border: on ? g.color : '#dde0d1' };
+        }),
+        weekChips: [1, 2, 3, 4, 5].map(w => {
+          const on = (g.weeks || []).includes(w);
+          return { w: String(w), label: String(w), bg: on ? '#3f5540' : 'transparent', color: on ? '#fff' : '#9aa08e', border: on ? '#3f5540' : '#dde0d1' };
+        })
+      })),
+      toggleGDay: e => {
+        const ds = e.currentTarget.dataset, dn = parseInt(ds.d, 10);
+        const g = cats.find(x => x.id === ds.id); if (!g) return;
+        const days = (g.days || []).includes(dn) ? g.days.filter(x => x !== dn) : [...(g.days || []), dn].sort();
+        upd(ds.id, x => ({ ...x, days }), { kind: 'change', text: g.label + ' collection: ' + (days.length ? days.map(n => DOW[n]).join(', ') : 'none') });
+      },
+      toggleGWeek: e => {
+        const ds = e.currentTarget.dataset, wn = parseInt(ds.w, 10);
+        const g = cats.find(x => x.id === ds.id); if (!g) return;
+        const weeks = (g.weeks || []).includes(wn) ? g.weeks.filter(x => x !== wn) : [...(g.weeks || []), wn].sort();
+        upd(ds.id, x => ({ ...x, weeks }), { kind: 'change', text: g.label + ' weeks: ' + (weeks.length ? weeks.join(', ') : 'every week') });
+      },
+      deleteGCat: e => {
+        const id = e.currentTarget.dataset.id, g = cats.find(x => x.id === id);
+        this.save({ garbage: cats.filter(x => x.id !== id) }, { kind: 'change', text: 'Removed category ' + (g ? g.label : '') });
+      },
+      addGCat: () => {
+        const f = S.form, label = (f.gLabel || '').trim(); if (!label) return;
+        const COL = ['#8e44ad', '#16a085', '#c0392b', '#e67e22', '#2980b9'];
+        this.save({
+          garbage: [...cats, { id: this.uid('g'), jp: (f.gJp || '').trim(), label, short: ((f.gJp || label) + '').slice(0, 7), icon: 'trash', days: [], weeks: [], color: COL[cats.length % COL.length] }],
+          form: { ...f, gLabel: '', gJp: '' }
+        }, { kind: 'change', text: 'Added garbage category ' + label });
+      },
+      hasGarbReminder: !!reminder, garbReminder: reminder, garbReminderJp: remJp,
+      garbReminderBg: remKind === 'today' ? '#fbe9f0' : '#f7edd8',
+      garbReminderBorder: remKind === 'today' ? '#f2cdda' : '#e8d9b0',
+      garbReminderColor: remKind === 'today' ? '#a83e66' : '#9a6c1c'
+    };
+  }
+
+  logVals(S) {
+    const dots = { done: '#5c7a58', change: '#2980b9', inspect: '#d95c8a', supply: '#e67e22', penalty: '#a83e66', shop: '#8e44ad', info: '#9aa08e' };
+    const logView = (S.log || []).map((l, i) => ({
+      id: String(i), text: l.text, dot: dots[l.kind] || dots.info,
+      when: new Date(l.ts).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+    }));
+    return {
+      logView, noLog: logView.length === 0,
+      logIntro: `${logView.length} entries · cycles are pushed to the calendar (calapp_sukkiri) on every change${S.lastPush ? ' · last push ' + this.fmtDate(S.lastPush) : ''}.`,
+      cloudSignedIn: S.cloud.status === 'on' || S.cloud.status === 'busy',
+      cloudSignedOut: S.cloud.status === 'off' || S.cloud.status === 'err',
+      cloudDot: { on: '#5c7a58', busy: '#e67e22', err: '#a83e66', off: '#c3c8b8' }[S.cloud.status] || '#c3c8b8',
+      cloudTitle: S.cloud.email ? 'Cloud backup · ' + S.cloud.email : 'Cloud backup',
+      cloudSub: S.cloud.msg,
+      cloudPush: () => this.cloudPushNow(false),
+      cloudPull: () => this.cloudPull(false),
+      cloudIn: () => this.cloudAuth('in'),
+      cloudUp: () => this.cloudAuth('up'),
+      cloudOut: () => this.cloudSignOut(),
+      pushNow: () => { const ok = this.pushCal(this.state); this.save({ lastPush: Date.now(), notice: ok ? `${this.state.cycles.length} cycles pushed to the calendar.` : 'Push failed — storage unavailable.' }, { kind: 'change', text: `Pushed ${this.state.cycles.length} cycles to calendar` }); }
+    };
+  }
+
+  printVals(S) {
+    const P = S.print || {}, D = this.D, checkDow = (this.props.checkInDay ?? 'Saturday') === 'Sunday' ? 0 : 6;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const mon = new Date(today); mon.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    const days = [...Array(7)].map((_, i) => new Date(mon.getTime() + i * D));
+    const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const weekDays = days.map(d => ({ dow: DOW[d.getDay()], num: String(d.getDate()), bg: d.getDay() === checkDow ? '#fdf5f8' : '#eef0e4', color: d.getDay() === 0 ? '#a83e66' : d.getDay() === 6 ? '#2980b9' : '#5c7a58' }));
+    const weekRows = (S.cycles || []).map(c => ({
+      id: c.id, name: c.name, every: `${c.days}d`,
+      cells: days.map(d => { const due = this.dueOn(c, d); return { border: due ? '#3f5540' : '#c3c8b8', fill: due ? '#e7eee4' : 'transparent', bg: d.getDay() === checkDow ? '#fdf9fb' : '#fff' }; })
+    }));
+    const checkinCells = days.map(d => ({ border: d.getDay() === checkDow ? '#d95c8a' : '#e8d3db', fill: d.getDay() === checkDow ? '#fbe9f0' : 'transparent' }));
+    const weekGarbage = days.map(d => { const g = this.garbOn(d); return { tags: g.map(x => ({ short: x.short || x.label, color: x.color })), border: g.length ? '#3f5540' : '#d6dac9' }; });
+    const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    const m0 = new Date(today.getFullYear(), today.getMonth(), 1), mN = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    const lead = (m0.getDay() + 6) % 7, total = Math.ceil((lead + mN.getDate()) / 7) * 7;
+    const monthCells = [...Array(total)].map((_, i) => {
+      const dn = i - lead + 1;
+      if (dn < 1 || dn > mN.getDate()) return { num: '', bg: '#f6f7f0', numColor: '#ccc', boxBorder: 'transparent', garbage: [], due: [], isCheck: false };
+      const d = new Date(today.getFullYear(), today.getMonth(), dn);
+      const isCheck = d.getDay() === checkDow;
+      return {
+        num: String(dn), bg: isCheck ? '#fdf5f8' : '#fff', numColor: d.getDay() === 0 ? '#a83e66' : '#3b4038', boxBorder: '#9aa08e',
+        garbage: this.garbOn(d).map(x => ({ short: x.short || x.label, color: x.color })),
+        due: (S.cycles || []).filter(c => this.dueOn(c, d)).map(c => c.name), isCheck
+      };
+    });
+    const modes = [['week', 'Week'], ['month', 'Month'], ['both', 'Both']];
+    const parts = [['cycles', 'Cycles'], ['checkin', 'Photo check-in'], ['garbage', 'Garbage days'], ['deep', 'Deep-clean pool'], ['notes', 'Notes'], ['points', 'Points / streak']];
+    return {
+      print: P,
+      printModes: modes.map(([id, label]) => ({ id, label, bg: (P.mode || 'week') === id ? '#fff' : 'transparent', color: (P.mode || 'week') === id ? '#3f5540' : '#7c8274' })),
+      printParts: parts.map(([key, label]) => ({ key, label, mark: P[key] ? '✓' : '○', border: P[key] ? '#5c7a58' : '#cfd4c2', bg: P[key] ? '#e7eee4' : 'transparent', color: P[key] ? '#3f5540' : '#9aa08e' })),
+      setPrintMode: e => this.save({ print: { ...P, mode: e.currentTarget.dataset.mode } }),
+      togglePrintPart: e => { const k = e.currentTarget.dataset.key; this.save({ print: { ...P, [k]: !P[k] } }); },
+      doPrint: () => { this.save({}, { kind: 'info', text: `Printed ${P.mode || 'week'} sheet` }); setTimeout(() => window.print(), 150); },
+      showWeekSheet: P.mode !== 'month', showMonthSheet: P.mode === 'month' || P.mode === 'both',
+      weekRangeLabel: `Week of ${fmt(days[0])} – ${fmt(days[6])}, ${days[6].getFullYear()}`,
+      weekDays, weekRows, checkinCells, weekGarbage,
+      monthLabel: today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      monthHead: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(l => ({ label: l, color: l === 'Sun' ? '#a83e66' : l === 'Sat' ? '#2980b9' : '#5c7a58' })),
+      monthCells,
+      printedOn: fmt(today)
+    };
+  }
+
+  renderVals() {
+    const S = this.state, D = this.D, now = Date.now();
+    const strict = this.props.strictMode ?? false;
+    const dayName = this.props.checkInDay ?? 'Saturday';
+
+    const nav = [
+      ['today', 'Today'], ['checkin', 'Photo check-in'], ['reports', 'Reports'],
+      ['deep', 'Deep clean'], ['shop', 'Shopping'], ['supplies', 'Supplies'], ['garbage', 'Garbage'], ['log', 'Log'], ['print', 'Print']
+    ].map(([id, label]) => {
+      const on = S.screen === id;
+      return { id, label, bg: on ? '#e7eee4' : 'transparent', color: on ? '#3f5540' : '#7c8274', dot: on ? '#d95c8a' : '#d6dac9' };
+    });
+
+    const ICON = {
+      shirt: 'M9.5 3 C9.5 4.2 10.6 5 12 5 C13.4 5 14.5 4.2 14.5 3 H17 L21 6.5 L18.5 9.5 L17 8.3 V21 H7 V8.3 L5.5 9.5 L3 6.5 L7 3 Z',
+      broom: 'M14.2 2.2 L16.8 4.8 L11.6 10 L9 7.4 Z M8 8.6 L12.4 13 C11 16.4 7.2 19.2 2.4 19.8 C4.6 15.6 5.2 11.8 8 8.6 Z',
+      drawer: 'M3 4 h18 v16 H3 Z M6.2 8 h11.6 v1.8 H6.2 Z M9 13.5 h6 v1.8 H9 Z',
+      sparkle: 'M12 2 L14.2 9.8 L22 12 L14.2 14.2 L12 22 L9.8 14.2 L2 12 L9.8 9.8 Z',
+      check: 'M12 2 a10 10 0 1 0 0 20 a10 10 0 0 0 0 -20 Z M10.6 15.4 L7.2 12 l1.4 -1.4 2 2 4.8 -4.8 1.4 1.4 Z',
+      camera: 'M9 4 h6 l1.6 2.5 H20 a2 2 0 0 1 2 2 V18 a2 2 0 0 1 -2 2 H4 a2 2 0 0 1 -2 -2 V8.5 a2 2 0 0 1 2 -2 h3.4 Z M12 9 a4.2 4.2 0 1 0 0 8.4 a4.2 4.2 0 0 0 0 -8.4 Z',
+      doc: 'M6 2 h9 l5 5 v15 H6 Z M9 11.5 h6 v1.7 H9 Z M9 15.2 h6 v1.7 H9 Z'
+    };
+    const iconFor = n => {
+      const s = n.toLowerCase();
+      if (s.includes('cloth') || s.includes('wash') || s.includes('laundry')) return ICON.shirt;
+      if (s.includes('sweep') || s.includes('mop') || s.includes('floor') || s.includes('scrub') || s.includes('bath')) return ICON.broom;
+      if (s.includes('wardrobe') || s.includes('closet') || s.includes('organiz') || s.includes('drawer') || s.includes('fold')) return ICON.drawer;
+      return ICON.sparkle;
+    };
+    const tasks = S.cycles.map(c => {
+      const due = c.last + c.days * D;
+      const days = Math.ceil((due - now) / D);
+      let dueLabel, chipBg, chipColor;
+      if (days < 0) { dueLabel = `Overdue by ${-days}d`; chipBg = '#fbe9f0'; chipColor = '#a83e66'; }
+      else if (days === 0) { dueLabel = 'Due today'; chipBg = '#f7edd8'; chipColor = '#9a6c1c'; }
+      else { dueLabel = `Due in ${days}d`; chipBg = '#e7eee4'; chipColor = '#5c7a58'; }
+      return { id: c.id, name: c.name, sub: `Every ${c.days} days · last done ${this.fmtDate(c.last)}`, dueLabel, chipBg, chipColor, _days: days, icon: iconFor(c.name), iconBg: days < 0 ? '#fbe9f0' : '#eef0e4', iconColor: days < 0 ? '#a83e66' : '#5c7a58' };
+    }).sort((a, b) => a._days - b._days);
+
+    const overdue = tasks.filter(t => t._days <= 0).length;
+    const coachMsg = strict
+      ? (overdue ? `${overdue} cycle${overdue > 1 ? 's' : ''} due. Handle them before anything else.` : 'Nothing due. Keep it that way.')
+      : (overdue ? `${overdue} cycle${overdue > 1 ? 's are' : ' is'} calling for you today — knock ${overdue > 1 ? 'them' : 'it'} out and enjoy that fresh-room feeling ✧` : 'All cycles are on track — your room thanks you. Sukkiri!');
+
+    const nextCheck = this.nextCheckDate();
+    const checkWithin7 = S.lastCheck && now - S.lastCheck < 7 * D;
+    const isCheckDay = new Date().getDay() === (dayName === 'Sunday' ? 0 : 6);
+    const checkinDue = !checkWithin7 || isCheckDay;
+
+    const areasView = S.areas.map(a => ({
+      id: a.id, name: a.name, idealBg: a.ideal ? `url(${a.ideal})` : 'none', currentBg: a.current ? `url(${a.current})` : 'none',
+      hasIdeal: !!a.ideal, noIdeal: !a.ideal, hasCurrent: !!a.current, noCurrent: !!a.ideal === false ? false : !a.current
+    }));
+    // fix: noCurrent independent of ideal
+    areasView.forEach(v => { v.noCurrent = !v.current; });
+
+    const ready = S.areas.filter(a => a.ideal && a.current).length;
+
+    const scoreColors = s => s >= 80 ? ['#e7eee4', '#3f5540'] : s >= 60 ? ['#f7edd8', '#9a6c1c'] : ['#fbe9f0', '#a83e66'];
+
+    const reportsView = S.reports.map(r => {
+      const [bg, col] = scoreColors(r.overall);
+      return {
+        id: r.id, overall: String(r.overall), scoreBg: bg, scoreColor: col,
+        dateLabel: this.fmtDate(r.date), summary: r.summary,
+        areas: r.areas.map(a => {
+          const [cb, cc] = scoreColors(a.score);
+          return {
+            name: a.area, score: String(a.score), verdict: a.verdict, chipBg: cb, chipColor: cc,
+            issues: a.issues,
+            steps: a.instructions.map((t, i) => `${i + 1}. ${t}`),
+            suggested: a.suggestedItems.map(x => ({ name: x.name, price: String(x.priceYen), label: `${x.name} · ¥${x.priceYen.toLocaleString()}` }))
+          };
+        })
+      };
+    });
+
+    const holidaysView = [...S.holidays].sort((a, b) => a.date < b.date ? -1 : 1).map(h => {
+      const dt = new Date(h.date + 'T00:00:00');
+      const days = Math.ceil((dt.getTime() - now) / D);
+      const done = h.tasks.filter(t => t.done).length;
+      return {
+        id: h.id, name: h.name,
+        dateLabel: dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + (days > 0 ? ` · in ${days}d` : days === 0 ? ' · today!' : ' · past'),
+        progress: `${done}/${h.tasks.length} done`,
+        tasks: h.tasks.map((t, idx) => ({
+          idx: String(idx), name: t.name, mark: t.done ? '✓' : '',
+          circleBorder: t.done ? '#5c7a58' : '#cfd4c2', circleBg: t.done ? '#5c7a58' : 'transparent',
+          color: t.done ? '#9aa08e' : '#3b4038', deco: t.done ? 'line-through' : 'none'
+        }))
+      };
+    });
+
+    const shopView = S.shop.map(it => ({
+      id: it.id, name: it.name, priceLabel: '¥' + (it.price || 0).toLocaleString(),
+      link: it.link, hasLink: !!it.link, suggested: !!it.suggested,
+      mark: it.bought ? '✓' : '', opacity: it.bought ? '0.55' : '1',
+      circleBorder: it.bought ? '#5c7a58' : '#cfd4c2', circleBg: it.bought ? '#5c7a58' : 'transparent',
+      deco: it.bought ? 'line-through' : 'none'
+    }));
+    const pending = S.shop.filter(i => !i.bought).reduce((s, i) => s + (i.price || 0), 0);
+
+    return {
+      navItems: nav,
+      goNav: e => this.save({ screen: e.currentTarget.dataset.id }),
+      goCheckin: () => this.save({ screen: 'checkin' }),
+      points: String(S.points), streak: String(S.streak),
+      isToday: S.screen === 'today', isCheckin: S.screen === 'checkin', isReports: S.screen === 'reports',
+      isDeep: S.screen === 'deep', isShop: S.screen === 'shop',
+      isSupplies: S.screen === 'supplies', isLog: S.screen === 'log', isPrint: S.screen === 'print',
+      isGarbage: S.screen === 'garbage',
+      ...this.suppliesVals(S, now), ...this.logVals(S), ...this.printVals(S), ...this.garbageVals(S),
+      todayLabel: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+      coachMsg, todayTasks: tasks,
+      ...(() => {
+        let h = 100 - overdue * 18;
+        if (!checkWithin7 && S.lastCheck) h -= 12;
+        if (S.reports.length) h = Math.round((h + S.reports[0].overall) / 2);
+        h = Math.max(5, Math.min(100, h));
+        const hero = h >= 85 ? 'Your room is sukkiri ✧' : h >= 60 ? 'Almost there — small tidy-ups today' : 'Time for a rescue mission';
+        return { health: String(h), ringGrad: `#d95c8a ${Math.round(h * 3.6)}deg, rgba(255,255,255,0.75) 0deg`, heroTitle: strict ? `Room health: ${h}/100` : hero };
+      })(),
+      sparkleOp: overdue === 0 ? '1' : '0',
+      dustOp: overdue > 0 ? '0.9' : '0',
+      statCards: [
+        { nav: 'today', value: `${tasks.length - overdue}/${tasks.length}`, label: 'cycles on track', color: overdue ? '#a83e66' : '#3f5540', icon: ICON.check, iconBg: overdue ? '#fbe9f0' : '#e7eee4' },
+        { nav: 'checkin', value: nextCheck.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + nextCheck.getDate(), label: 'next photo check-in', color: '#d95c8a', icon: ICON.camera, iconBg: '#fbe9f0' },
+        { nav: 'reports', value: String(S.reports.length), label: 'inspection reports', color: '#5c7a58', icon: ICON.doc, iconBg: '#e7eee4' }
+      ],
+      hasNotice: !!S.notice, noticeText: S.notice,
+      dismissNotice: () => this.save({ notice: '' }),
+      checkinDue,
+      ...(() => {
+        const up = [...S.holidays].filter(h => { const t = new Date(h.date + 'T00:00:00').getTime(); return t >= now - D; }).sort((a, b) => a.date < b.date ? -1 : 1)[0];
+        if (!up) return { hasNextHoliday: false, nextHolName: '', nextHolLabel: '' };
+        const days = Math.ceil((new Date(up.date + 'T00:00:00').getTime() - now) / D);
+        const open = up.tasks.filter(t => !t.done).length;
+        return {
+          hasNextHoliday: true, nextHolName: up.name,
+          nextHolLabel: (days <= 0 ? "It's here — deep-clean day!" : days === 1 ? 'Tomorrow!' : `In ${days} days.`) + ` ${open} task${open === 1 ? '' : 's'} in the plan.`
+        };
+      })(),
+      goDeep: () => this.save({ screen: 'deep' }),
+      checkinDueLabel: isCheckDay ? `It's ${dayName} — photo day! Snap each area and let Claude inspect.` : `Next check-in: ${this.fmtDate(nextCheck.getTime())}. Ideal photos can be added anytime.`,
+      checkinIntro: `Every ${dayName}, photograph each area and compare against its ideal state. Next check-in: ${this.fmtDate(nextCheck.getTime())}.`,
+      markDone: e => {
+        const id = e.currentTarget.dataset.id, cyc = S.cycles.find(c => c.id === id);
+        this.save({
+          cycles: S.cycles.map(c => c.id === id ? { ...c, last: Date.now() } : c),
+          points: S.points + 10,
+          notice: strict ? 'Done. Next cycle scheduled.' : 'Nice work! +10 points — cycle regenerated.'
+        }, { kind: 'done', text: `Done: ${cyc ? cyc.name : 'cycle'} (+10) — next in ${cyc ? cyc.days : '?'} days` });
+      },
+      deleteCycle: e => { const id = e.currentTarget.dataset.id, cyc = S.cycles.find(c => c.id === id); this.save({ cycles: S.cycles.filter(c => c.id !== id) }, { kind: 'change', text: `Removed cycle ${cyc ? cyc.name : ''}` }); },
+      form: S.form,
+      onField: e => { const t = e.currentTarget; this.save({ form: { ...S.form, [t.dataset.field]: t.value } }); },
+      addCycle: () => {
+        const name = S.form.cycleName.trim(), days = Math.max(1, parseInt(S.form.cycleDays, 10) || 7);
+        if (!name) return;
+        this.save({ cycles: [...S.cycles, { id: this.uid('c'), name, days, last: Date.now() }], form: { ...S.form, cycleName: '' } }, { kind: 'change', text: `Added cycle ${name} (every ${days}d)` });
+      },
+      areasView,
+      fileRef: el => { this.fileEl = el; },
+      pickPhoto: e => {
+        const { area, kind } = e.currentTarget.dataset;
+        if (kind === 'ideal') {
+          const a = S.areas.find(x => x.id === area);
+          if (a && a.ideal && !window.confirm(`The ideal photo for "${a.name}" is locked. Really replace it? This changes the reference all future inspections compare against.`)) return;
+        }
+        this.pending = { area, kind };
+        if (this.fileEl) this.fileEl.click();
+      },
+      onFileChosen: e => {
+        const f = e.target.files && e.target.files[0]; e.target.value = '';
+        if (!f || !this.pending) return;
+        const { area, kind } = this.pending;
+        this.compress(f).then(url => {
+          this.save({ areas: this.state.areas.map(a => a.id === area ? { ...a, [kind]: url } : a) });
+        }).catch(() => this.setState({ inspectError: 'Could not read that image.' }));
+      },
+      readyLabel: ready ? `${ready} of ${S.areas.length} areas ready to inspect` : 'Add an ideal + this week photo for at least one area',
+      inspecting: S.inspecting, notInspecting: !S.inspecting,
+      inspectDisabled: ready === 0, inspectOpacity: ready === 0 ? '0.45' : '1',
+      runInspection: () => this.inspect(),
+      hasInspectError: !!S.inspectError, inspectError: S.inspectError,
+      reportsView, noReports: S.reports.length === 0,
+      addSuggested: e => {
+        const { name, price } = e.currentTarget.dataset;
+        if (S.shop.some(i => i.name.toLowerCase() === name.toLowerCase())) { this.save({ screen: 'shop' }); return; }
+        this.save({ shop: [...S.shop, { id: this.uid('s'), name, price: parseInt(price, 10) || 0, link: '', bought: false, suggested: true }], notice: `Added "${name}" to your shopping list.` }, { kind: 'shop', text: `Added suggested item ${name} to shopping` });
+      },
+      holidaysView,
+      addHoliday: () => {
+        const name = S.form.holName.trim(), date = S.form.holDate;
+        if (!name || !date) return;
+        this.save({
+          holidays: [...S.holidays, { id: this.uid('h'), name, date, tasks: S.pool.map(n => ({ name: n, done: false })) }],
+          form: { ...S.form, holName: '', holDate: '' }
+        }, { kind: 'change', text: `Deep-clean plan built for ${name} (${date}) — ${S.pool.length} tasks` });
+      },
+      deleteHoliday: e => { const id = e.currentTarget.dataset.id; this.save({ holidays: S.holidays.filter(h => h.id !== id) }); },
+      toggleHolTask: e => {
+        const { hid, idx } = e.currentTarget.dataset; const i = parseInt(idx, 10);
+        this.save({ holidays: S.holidays.map(h => h.id === hid ? { ...h, tasks: h.tasks.map((t, j) => j === i ? { ...t, done: !t.done } : t) } : h) });
+      },
+      poolView: S.pool.map((name, idx) => ({ name, idx: String(idx) })),
+      addPoolTask: () => {
+        const t = S.form.poolTask.trim(); if (!t) return;
+        this.save({ pool: [...S.pool, t], form: { ...S.form, poolTask: '' } });
+      },
+      removePoolTask: e => { const i = parseInt(e.currentTarget.dataset.idx, 10); this.save({ pool: S.pool.filter((_, j) => j !== i) }); },
+      shopView,
+      toggleBought: e => { const id = e.currentTarget.dataset.id; this.save({ shop: S.shop.map(i => i.id === id ? { ...i, bought: !i.bought, boughtAt: !i.bought ? Date.now() : null } : i) }); },
+      budgetVal: String(S.budget ?? 5000),
+      onBudget: e => this.save({ budget: Math.max(0, parseInt(e.currentTarget.value, 10) || 0) }),
+      spentLabel: (() => {
+        const m = new Date(); m.setDate(1); m.setHours(0, 0, 0, 0);
+        const spent = S.shop.filter(i => i.bought && (i.boughtAt || 0) >= m.getTime()).reduce((s, i) => s + (i.price || 0), 0);
+        return `Spent this month: ¥${spent.toLocaleString()}`;
+      })(),
+      remainLabel: (() => {
+        const m = new Date(); m.setDate(1); m.setHours(0, 0, 0, 0);
+        const spent = S.shop.filter(i => i.bought && (i.boughtAt || 0) >= m.getTime()).reduce((s, i) => s + (i.price || 0), 0);
+        const rem = (S.budget ?? 5000) - spent;
+        return rem >= 0 ? `Remaining: ¥${rem.toLocaleString()}` : `Over budget by ¥${(-rem).toLocaleString()}`;
+      })(),
+      remainColor: (() => {
+        const m = new Date(); m.setDate(1); m.setHours(0, 0, 0, 0);
+        const spent = S.shop.filter(i => i.bought && (i.boughtAt || 0) >= m.getTime()).reduce((s, i) => s + (i.price || 0), 0);
+        return (S.budget ?? 5000) - spent >= 0 ? '#5c7a58' : '#a83e66';
+      })(),
+      sendToCostApp: () => {
+        const items = S.shop.filter(i => !i.bought).map(i => ({ name: i.name, priceYen: i.price || 0, link: i.link || '', reason: i.suggested ? 'Suggested by Sukkiri room inspection' : 'Cleaning supply', category: 'Room cleaning' }));
+        if (!items.length) { this.save({ notice: 'Nothing pending to request — the list is clear!' }); return; }
+        const req = { source: 'sukkiri', type: 'purchase_request', status: 'pending', id: this.uid('req'), requestedAt: new Date().toISOString(), currency: 'JPY', totalYen: items.reduce((s, i) => s + i.priceYen, 0), items };
+        try {
+          const q = JSON.parse(localStorage.getItem('sukkiri_cost_requests') || '[]');
+          q.push(req);
+          localStorage.setItem('sukkiri_cost_requests', JSON.stringify(q));
+        } catch (e) {}
+        const txt = JSON.stringify(req, null, 2);
+        const done = () => this.save({ notice: `Request sent — ${items.length} item${items.length > 1 ? 's' : ''} (¥${req.totalYen.toLocaleString()}) queued for the cost app and copied to your clipboard.` }, { kind: 'shop', text: `Sent purchase request to cost app — ${items.length} items, ¥${req.totalYen.toLocaleString()}` });
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, done); else done();
+      },
+      deleteShopItem: e => { const id = e.currentTarget.dataset.id; this.save({ shop: S.shop.filter(i => i.id !== id) }); },
+      addShopItem: () => {
+        const name = S.form.shopName.trim(); if (!name) return;
+        this.save({
+          shop: [...S.shop, { id: this.uid('s'), name, price: parseInt(S.form.shopPrice, 10) || 0, link: S.form.shopLink.trim(), bought: false, suggested: false }],
+          form: { ...S.form, shopName: '', shopPrice: '', shopLink: '' }
+        }, { kind: 'shop', text: `Added ${name} to shopping` });
+      },
+      totalLabel: 'Still to buy: ¥' + pending.toLocaleString()
+    };
+  }
+}
+</script>
+</body>
+</html>
