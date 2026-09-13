@@ -1,0 +1,28 @@
+/* My Calendar — shape, elevation, motion tokens (exact values from source). */
+:root{
+  --shadow:0 1px 0 #0a0a0a; /* theme card shadow; redefined per theme */
+  /* radii */
+  --r-card:16px;        /* calendar grid */
+  --r-modal:18px;       /* modals, pickers */
+  --r-box:20px;         /* login box */
+  --r-btn:12px;         /* primary buttons */
+  --r-input:10px;       /* inputs, textareas, info banners, bday rows */
+  --r-panel:14px;       /* dropdown panels, bulk bar */
+  --r-opt:9px;          /* dropdown options, picker cells */
+  --r-tab:7px;          /* login tabs */
+  --r-pill:22px;        /* dd-btn pills (btn-today 20px) */
+  --r-badge:5px;        /* GOAL badge */
+  /* borders */
+  --bw-card:2px;        /* cards, modals, grid */
+  --bw-control:1.5px;   /* inputs, pills, icon buttons, dropdowns */
+  /* shadows (non-theme) */
+  --sh-control:0 2px 8px rgba(0,0,0,.08);
+  --sh-panel:0 12px 40px rgba(0,0,0,.25);
+  --sh-btn:0 4px 15px var(--btn-sh);
+  /* motion */
+  --t-press:.12s;/* @kind other */       /* transform hover/press */
+  --t-color:.15s;/* @kind other */       /* border/color changes */
+  --t-bg:.5s ease;/* @kind other */      /* theme switch background */
+  --blur-overlay:blur(6px);/* @kind other */
+  /* hover/press scale recipe: buttons 1.02 / icon-btns 1.1-1.15 / press .97-.98 */
+}

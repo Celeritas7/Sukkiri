@@ -1,0 +1,22 @@
+/* My Calendar — typography tokens. Two-font system per theme: heavy display heading + body. */
+:root{
+  --h-font:'Tiempos Headline',serif; /* Newsprint default; NOT on Google Fonts — falls back to serif */
+  --b-font:'PT Serif',serif;
+  --font-heading:var(--h-font);
+  --font-body:var(--b-font);
+  /* fluid scale (exact clamps from source) */
+  --fs-month-title:clamp(36px,9vw,66px);/* @kind font */   /* weight 900, letter-spacing -1px, line-height 1.05 */
+  --fs-month-sub:clamp(15px,3.5vw,22px);/* @kind font */   /* weight 700 */
+  --fs-day-hdr:clamp(11px,2.6vw,16px);/* @kind font */     /* weight 700 */
+  --fs-day-num:clamp(13px,3vw,22px);/* @kind font */       /* weight 700 */
+  --fs-note:clamp(8px,1.5vw,11px);/* @kind font */         /* weight 600 */
+  --fs-diary:clamp(7px,1.3vw,10px);/* @kind font */        /* weight 500, opacity .85 */
+  --fs-modal-title:28px;/* @kind font */                   /* weight 900, heading font */
+  --fs-modal-sub:16px;/* @kind font */
+  --fs-label:16px;/* @kind font */                         /* weight 600 */
+  --fs-input:15px;/* @kind font */
+  --fs-btn:18px;/* @kind font */                           /* weight 700 */
+  --fs-control:13px;/* @kind font */                       /* pills, dropdowns, stats-adjacent */
+  --fs-stats:14px;/* @kind font */
+  --fs-hint:12px;/* @kind font */
+}

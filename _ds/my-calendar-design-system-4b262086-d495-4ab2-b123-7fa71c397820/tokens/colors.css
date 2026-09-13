@@ -1,0 +1,48 @@
+/* My Calendar — color tokens.
+   :root carries theme 0 "Newsprint" defaults; tokens/themes.css redefines per [data-theme]. */
+:root{
+  /* theme-scoped (defaults = Newsprint) */
+  --bg:#fafaf7;
+  --card-bg:#ffffff;
+  --border:#1a1a1a;
+  --txt:#0a0a0a;
+  --txt2:#5a5a5a;
+  --accent:#c8102e;
+  --goal:#0a0a0a;
+  --note:#c8102e;
+  --diary:#0a0a0a;
+  --today-bg:#c8102e;
+  --wknd:#c8102e;
+  --btn:#0a0a0a;/* @kind color */
+  --btn-sh:rgba(0,0,0,.25);
+  --input-bg:#ffffff;
+  --pattern:none;/* @kind other */
+  --cell-hover:rgba(0,0,0,.04);
+  --pulse:rgba(200,16,46,.4);
+  /* fixed mark palette (identical in every theme) */
+  --mark-red:#d63031;
+  --mark-pink:#e84393;
+  --mark-teal:#00b894;
+  --mark-cyan:#00cec9;
+  --mark-orange:#e17055;
+  --mark-purple:#6c5ce7;
+  --mark-yellow:#fdcb6e;
+  /* fixed semantic constants */
+  --mood-good:#27ae60;
+  --mood-bad:#e74c3c;
+  --mood-neutral:#999999;
+  --mood-mixed:#ffd93d;
+  --live-dot:#2ecc71;
+  --wx-hi:#e74c3c;
+  --wx-lo:#3498db;
+  --bday-name:#e84393;
+  --overlay:rgba(0,0,0,.55);
+  --hover-tint:rgba(128,128,128,.12);
+  /* semantic aliases */
+  --surface-page:var(--bg);
+  --surface-card:var(--card-bg);
+  --surface-input:var(--input-bg);
+  --text-body:var(--txt);
+  --text-muted:var(--txt2);
+  --border-card:var(--border);
+}

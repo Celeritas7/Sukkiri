@@ -12,6 +12,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/data.js"></script>
+<script src="js/print.js"></script>
 <style>
 html, body { margin:0; padding:0; background:#f1f2ea; }
 *, *::before, *::after { box-sizing: border-box; }
@@ -1200,6 +1202,11 @@ save(patch, entry) {
     this.syncSupplies();
     this.initCloud();
     this.initTimers();
+    let tries = 0;
+    const waitData = setInterval(() => {
+      if (window.SUKKIRI_DATA) { clearInterval(waitData); this.applyDataFile(); }
+      else if (++tries > 20) clearInterval(waitData);
+    }, 150);
   }
 
   // ---------- due dates ----------
@@ -1685,51 +1692,38 @@ save(patch, entry) {
     };
   }
 
+  // Print sheet layout lives in js/print.js — see that file to change the A4 sheets.
   printVals(S) {
-    const P = S.print || {}, D = this.D, checkDow = (this.props.checkInDay ?? 'Saturday') === 'Sunday' ? 0 : 6;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const mon = new Date(today); mon.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-    const days = [...Array(7)].map((_, i) => new Date(mon.getTime() + i * D));
-    const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const weekDays = days.map(d => ({ dow: DOW[d.getDay()], num: String(d.getDate()), bg: d.getDay() === checkDow ? '#fdf5f8' : '#eef0e4', color: d.getDay() === 0 ? '#a83e66' : d.getDay() === 6 ? '#2980b9' : '#5c7a58' }));
-    const weekRows = (S.cycles || []).map(c => ({
-      id: c.id, name: c.name, every: `${c.days}d`,
-      cells: days.map(d => { const due = this.dueOn(c, d); return { border: due ? '#3f5540' : '#c3c8b8', fill: due ? '#e7eee4' : 'transparent', bg: d.getDay() === checkDow ? '#fdf9fb' : '#fff' }; })
-    }));
-    const checkinCells = days.map(d => ({ border: d.getDay() === checkDow ? '#d95c8a' : '#e8d3db', fill: d.getDay() === checkDow ? '#fbe9f0' : 'transparent' }));
-    const weekGarbage = days.map(d => { const g = this.garbOn(d); return { tags: g.map(x => ({ short: x.short || x.label, color: x.color })), border: g.length ? '#3f5540' : '#d6dac9' }; });
-    const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (typeof window.SUKKIRI_PRINT === 'function') return window.SUKKIRI_PRINT(this, S);
+    return { print: S.print || {}, printModes: [], printParts: [], weekDays: [], weekRows: [], checkinCells: [], weekGarbage: [], monthHead: [], monthCells: [],
+      showWeekSheet: false, showMonthSheet: false, printMissing: true,
+      weekRangeLabel: '', monthLabel: '', printedOn: '',
+      setPrintMode: () => {}, togglePrintPart: () => {}, doPrint: () => window.print() };
+  }
 
-    const m0 = new Date(today.getFullYear(), today.getMonth(), 1), mN = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    const lead = (m0.getDay() + 6) % 7, total = Math.ceil((lead + mN.getDate()) / 7) * 7;
-    const monthCells = [...Array(total)].map((_, i) => {
-      const dn = i - lead + 1;
-      if (dn < 1 || dn > mN.getDate()) return { num: '', bg: '#f6f7f0', numColor: '#ccc', boxBorder: 'transparent', garbage: [], due: [], isCheck: false };
-      const d = new Date(today.getFullYear(), today.getMonth(), dn);
-      const isCheck = d.getDay() === checkDow;
-      return {
-        num: String(dn), bg: isCheck ? '#fdf5f8' : '#fff', numColor: d.getDay() === 0 ? '#a83e66' : '#3b4038', boxBorder: '#9aa08e',
-        garbage: this.garbOn(d).map(x => ({ short: x.short || x.label, color: x.color })),
-        due: (S.cycles || []).filter(c => this.dueOn(c, d)).map(c => c.name), isCheck
-      };
-    });
-    const modes = [['week', 'Week'], ['month', 'Month'], ['both', 'Both']];
-    const parts = [['cycles', 'Cycles'], ['checkin', 'Photo check-in'], ['garbage', 'Garbage days'], ['deep', 'Deep-clean pool'], ['notes', 'Notes'], ['points', 'Points / streak']];
-    return {
-      print: P,
-      printModes: modes.map(([id, label]) => ({ id, label, bg: (P.mode || 'week') === id ? '#fff' : 'transparent', color: (P.mode || 'week') === id ? '#3f5540' : '#7c8274' })),
-      printParts: parts.map(([key, label]) => ({ key, label, mark: P[key] ? '✓' : '○', border: P[key] ? '#5c7a58' : '#cfd4c2', bg: P[key] ? '#e7eee4' : 'transparent', color: P[key] ? '#3f5540' : '#9aa08e' })),
-      setPrintMode: e => this.save({ print: { ...P, mode: e.currentTarget.dataset.mode } }),
-      togglePrintPart: e => { const k = e.currentTarget.dataset.key; this.save({ print: { ...P, [k]: !P[k] } }); },
-      doPrint: () => { this.save({}, { kind: 'info', text: `Printed ${P.mode || 'week'} sheet` }); setTimeout(() => window.print(), 150); },
-      showWeekSheet: P.mode !== 'month', showMonthSheet: P.mode === 'month' || P.mode === 'both',
-      weekRangeLabel: `Week of ${fmt(days[0])} – ${fmt(days[6])}, ${days[6].getFullYear()}`,
-      weekDays, weekRows, checkinCells, weekGarbage,
-      monthLabel: today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-      monthHead: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(l => ({ label: l, color: l === 'Sun' ? '#a83e66' : l === 'Sat' ? '#2980b9' : '#5c7a58' })),
-      monthCells,
-      printedOn: fmt(today)
+  /* Anything NEW in js/data.js is adopted here; live cycles keep their history.
+     Municipal facts (garbage rules, ward) always refresh from that file. */
+  applyDataFile() {
+    const d = window.SUKKIRI_DATA;
+    if (!d) return;
+    const S = this.state, patch = {};
+    const addNew = (key, seedList, make) => {
+      const have = new Set((S[key] || []).map(x => x.id));
+      const add = (seedList || []).filter(x => !have.has(x.id)).map(make);
+      if (add.length) patch[key] = [...(S[key] || []), ...add];
+      return add.length;
     };
+    const now = Date.now();
+    const nc = addNew('cycles', d.cycles, c => ({ id: c.id, name: c.name, days: c.days, last: now, wk: c.wk !== false }));
+    const np = addNew('supplies', d.supplies, p => p.kind === 'onetime'
+      ? { id: p.id, name: p.name, kind: 'onetime', price: p.price || 0, owned: false, replaceMonths: p.replaceMonths || 0, link: '' }
+      : { id: p.id, name: p.name, kind: 'refill', every: p.every || 30, price: p.price || 0, last: now, link: '' });
+    const ng = addNew('garbage', d.garbage, g => ({ ...g }));
+    if (d.garbageRules && JSON.stringify(d.garbageRules) !== JSON.stringify(S.garbageRules)) patch.garbageRules = d.garbageRules;
+    if (d.ward && d.ward !== S.ward) patch.ward = d.ward;
+    if (!Object.keys(patch).length) return;
+    const bits = [nc && nc + ' cycle' + (nc > 1 ? 's' : ''), np && np + ' suppl' + (np > 1 ? 'ies' : 'y'), ng && ng + ' garbage categor' + (ng > 1 ? 'ies' : 'y')].filter(Boolean);
+    this.save(patch, { kind: 'change', text: bits.length ? 'Picked up from js/data.js: ' + bits.join(', ') : 'Refreshed garbage rules from js/data.js' });
   }
 
   renderVals() {
