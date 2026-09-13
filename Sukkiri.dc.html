@@ -56,6 +56,31 @@ input::placeholder { color:#a8ad9f; }
       </div>
     </div>
   </div>
+  <sc-if value="{{ hasTimers }}" hint-placeholder-val="{{ false }}">
+    <div data-noprint="1" style="position:fixed; left:0; right:0; bottom:0; z-index:40; display:flex; justify-content:center; padding:12px; pointer-events:none;">
+      <div style="display:flex; flex-direction:column; gap:8px; width:100%; max-width:640px; pointer-events:auto;">
+        <sc-for list="{{ timerView }}" as="tm" hint-placeholder-count="1">
+          <div style="position:relative; overflow:hidden; background:{{ tm.bg }}; border:1.5px solid {{ tm.border }}; border-radius:16px; padding:12px 16px; box-shadow:0 10px 30px rgba(59,64,56,0.16); display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+            <div style="position:absolute; left:0; bottom:0; height:3px; background:{{ tm.bar }}; width:{{ tm.pct }}%; transition:width 1s linear;"></div>
+            <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:23px; color:{{ tm.color }}; min-width:80px;">{{ tm.timeLeft }}</div>
+            <div style="flex:1; min-width:140px;">
+              <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ tm.label }}</div>
+              <div style="font-size:12px; font-weight:700; color:#9aa08e;">{{ tm.sub }}</div>
+            </div>
+            <sc-if value="{{ tm.running }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; gap:8px;">
+                <div onClick="{{ extendTimer }}" data-id="{{ tm.id }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 13px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274;" style-hover="background:#f4f5ec;">+5 min</div>
+                <div onClick="{{ stopTimer }}" data-id="{{ tm.id }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 13px; border-radius:999px; color:#c98aa4;" style-hover="color:#a83e66;">Stop</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ tm.done }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ finishTimer }}" data-id="{{ tm.id }}" style="cursor:pointer; background:#d95c8a; color:#fff; font-size:13px; font-weight:800; padding:9px 17px; border-radius:999px; white-space:nowrap;" style-hover="background:#c74a78;">{{ tm.finishLabel }}</div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
   <div style="max-width:960px; margin:0 auto; padding:26px 20px 60px;">
     <input type="file" accept="image/*" ref="{{ fileRef }}" onChange="{{ onFileChosen }}" style="display:none;">
 
@@ -131,6 +156,29 @@ input::placeholder { color:#a8ad9f; }
           </sc-for>
         </div>
 
+        <sc-if value="{{ hasRisk }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:18px; padding:16px 18px; margin-bottom:16px;">
+            <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+              <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:17px; color:#3b4038; white-space:nowrap;">⚑ {{ riskTitle }}</div>
+              <div style="font-size:12.5px; font-weight:700; color:#9aa08e; flex:1; min-width:200px;">{{ riskSub }}</div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              <sc-for list="{{ riskItems }}" as="rk" hint-placeholder-count="2">
+                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:{{ rk.bg }}; border:1px solid {{ rk.border }}; border-radius:14px; padding:11px 14px;">
+                  <div style="width:8px; height:8px; border-radius:50%; background:{{ rk.dot }}; flex-shrink:0;"></div>
+                  <div style="font-size:10px; font-weight:900; letter-spacing:0.08em; color:{{ rk.color }}; white-space:nowrap;">{{ rk.tag }}</div>
+                  <div style="flex:1; min-width:190px;">
+                    <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ rk.name }}</div>
+                    <div style="font-size:12.5px; font-weight:600; color:#68705f; line-height:1.4;">{{ rk.why }}</div>
+                  </div>
+                  <div onClick="{{ riskAct }}" data-id="{{ rk.id }}" data-kind="{{ rk.actKind }}" data-to="{{ rk.to }}" style="cursor:pointer; background:{{ rk.color }}; color:#fff; font-weight:800; font-size:12.5px; padding:9px 16px; border-radius:999px; white-space:nowrap;" style-hover="filter:brightness(1.1);">{{ rk.act }}</div>
+                  <div onClick="{{ riskSnooze }}" data-id="{{ rk.id }}" data-sev="{{ rk.sev }}" title="Hide this flag for a week" style="cursor:pointer; font-size:12.5px; font-weight:800; color:#a8ad9f;" style-hover="color:#7c8274;">Snooze</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
         <sc-if value="{{ hasGarbReminder }}" hint-placeholder-val="{{ false }}">
           <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:{{ garbReminderBg }}; border:1px solid {{ garbReminderBorder }}; border-radius:16px; padding:14px 18px; margin-bottom:16px;">
             <div style="font-size:20px;">🗑</div>
@@ -177,13 +225,41 @@ input::placeholder { color:#a8ad9f; }
               </div>
               <div style="font-size:12.5px; font-weight:800; padding:5px 12px; border-radius:999px; background:{{ t.chipBg }}; color:{{ t.chipColor }}; white-space:nowrap;">{{ t.dueLabel }}</div>
               <div onClick="{{ toggleWk }}" data-id="{{ t.id }}" title="Weekend-only or any day" style="cursor:pointer; font-size:11.5px; font-weight:800; padding:5px 11px; border-radius:999px; border:1.5px solid {{ t.wkBorder }}; background:{{ t.wkBg }}; color:{{ t.wkColor }}; white-space:nowrap;">{{ t.wkMark }}</div>
+              <div onClick="{{ openPick }}" data-id="{{ t.id }}" title="Start a timer for this — pick how long" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 13px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274; white-space:nowrap;" style-hover="border-color:#5c7a58; color:#5c7a58;">⏱ Timer</div>
               <div onClick="{{ markDone }}" data-id="{{ t.id }}" style="background:#3f5540; color:#fff; font-weight:800; font-size:13px; padding:9px 16px; border-radius:999px; cursor:pointer; white-space:nowrap;" style-hover="background:#2e4030;">Mark done +10</div>
               <div onClick="{{ deleteCycle }}" data-id="{{ t.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800; padding:4px;" style-hover="color:#d95c8a;">✕</div>
+              <sc-if value="{{ t.picking }}" hint-placeholder-val="{{ false }}">
+                <div style="flex-basis:100%; display:flex; align-items:center; gap:8px; flex-wrap:wrap; border-top:1px dashed #e0e3d6; padding-top:11px; margin-top:2px;">
+                  <div style="font-size:12px; font-weight:800; color:#9aa08e; letter-spacing:0.04em;">HOW LONG?</div>
+                  <sc-for list="{{ t.pickOpts }}" as="po" hint-placeholder-count="8">
+                    <div onClick="{{ startCycleTimer }}" data-id="{{ t.id }}" data-mins="{{ po.mins }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 13px; border-radius:999px; border:1.5px solid {{ po.border }}; background:{{ po.bg }}; color:{{ po.color }}; white-space:nowrap;" style-hover="border-color:#5c7a58; color:#3f5540;">{{ po.label }}</div>
+                  </sc-for>
+                  <div style="font-size:11.5px; font-weight:700; color:#a8ad9f;">· suggested for this job</div>
+                </div>
+              </sc-if>
             </div>
           </sc-for>
         </div>
 
-        <div style="margin-top:26px; background:#fcfcf9; border:1px dashed #cfd4c2; border-radius:16px; padding:16px 18px;">
+        <div style="margin-top:22px; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:18px; padding:16px 18px;">
+          <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
+            <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:17px; color:#3b4038; white-space:nowrap;">⏱ Cleaning timer</div>
+            <div style="font-size:12.5px; font-weight:700; color:{{ timerSyncColor }}; flex:1; min-width:200px;">{{ timerSync }}</div>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin:13px 0;">
+            <sc-for list="{{ timerPresets }}" as="pr" hint-placeholder-count="6">
+              <div onClick="{{ startPreset }}" data-label="{{ pr.label }}" data-mins="{{ pr.mins }}" style="cursor:pointer; font-size:13px; font-weight:800; padding:9px 15px; border-radius:999px; border:1.5px solid #cfdcc9; background:#e7eee4; color:#3f5540; white-space:nowrap;" style-hover="background:#d9e4d4;">{{ pr.chip }}</div>
+            </sc-for>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <input value="{{ form.timerLabel }}" data-field="timerLabel" onChange="{{ onField }}" placeholder="Something else — e.g. Soaking socks" style="flex:2; min-width:190px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+            <input value="{{ form.timerMins }}" data-field="timerMins" onChange="{{ onField }}" type="number" min="1" max="600" placeholder="min" style="width:90px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+            <div onClick="{{ startCustom }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:#4a6647;">Start timer</div>
+          </div>
+          <div style="font-size:12px; color:#a8ad9f; font-weight:600; margin-top:9px;">Only the finish time is stored, so a timer survives a closed tab — and shows up on every device you're signed in on.</div>
+        </div>
+
+        <div style="margin-top:22px; background:#fcfcf9; border:1px dashed #cfd4c2; border-radius:16px; padding:16px 18px;">
           <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:10px;">Add a cleaning cycle</div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <input value="{{ form.cycleName }}" data-field="cycleName" onChange="{{ onField }}" placeholder="e.g. Bathroom scrub" style="flex:2; min-width:180px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
@@ -449,7 +525,64 @@ input::placeholder { color:#a8ad9f; }
       <div>
         <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 4px; color:#3b4038;">Garbage days <span style="font-size:15px; color:#a0a696; font-weight:700;">ごみ収集</span></h1>
         <div style="font-size:13px; font-weight:800; color:#5c7a58; margin-bottom:6px;">{{ garbageWard }}</div>
-        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">{{ garbageIntro }}</div>
+        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:18px;">{{ garbageIntro }}</div>
+
+        <sc-if value="{{ hasUpcoming }}" hint-placeholder-val="{{ false }}">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:10px; margin-bottom:16px;">
+            <sc-for list="{{ gUpcoming }}" as="up" hint-placeholder-count="4">
+              <div style="background:{{ up.bg }}; border:1px solid {{ up.border }}; border-radius:14px; padding:12px 14px;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
+                  <svg viewBox="0 0 24 24" width="18" height="18"><path d="{{ up.path }}" fill="{{ up.color }}" fill-rule="evenodd"></path></svg>
+                  <div style="font-size:10.5px; font-weight:900; letter-spacing:0.06em; color:{{ up.whenColor }};">{{ up.when }}</div>
+                </div>
+                <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3b4038; word-break:keep-all;">{{ up.jp }}</div>
+                <div style="font-size:12.5px; font-weight:700; color:#68705f;">{{ up.en }}</div>
+                <div style="font-size:12.5px; font-weight:700; color:#55604f; margin-top:5px; line-height:1.45;">{{ up.bag }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:18px; padding:16px 18px 18px; margin-bottom:18px;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+            <div onClick="{{ gPrev }}" style="cursor:pointer; width:30px; height:30px; border-radius:50%; border:1.5px solid #dde0d1; display:flex; align-items:center; justify-content:center; color:#7c8274; font-weight:800; flex-shrink:0;" style-hover="border-color:#5c7a58; color:#5c7a58;">‹</div>
+            <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:20px; color:#3f5540; min-width:150px;">{{ gMonthLabel }}</div>
+            <div onClick="{{ gNext }}" style="cursor:pointer; width:30px; height:30px; border-radius:50%; border:1.5px solid #dde0d1; display:flex; align-items:center; justify-content:center; color:#7c8274; font-weight:800; flex-shrink:0;" style-hover="border-color:#5c7a58; color:#5c7a58;">›</div>
+            <div onClick="{{ gToday }}" style="cursor:pointer; font-size:12px; font-weight:800; padding:6px 13px; border-radius:999px; border:1.5px solid #cfdcc9; color:#5c7a58; white-space:nowrap; flex-shrink:0;" style-hover="background:#e7eee4;">● Today</div>
+            <div style="flex:1; min-width:20px;"></div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <sc-for list="{{ gLegend }}" as="lg" hint-placeholder-count="4">
+                <div style="display:flex; align-items:center; gap:5px; font-size:11.5px; font-weight:800; color:#7c8274;">
+                  <svg viewBox="0 0 24 24" width="14" height="14"><path d="{{ lg.path }}" fill="{{ lg.color }}" fill-rule="evenodd"></path></svg>
+                  <span>{{ lg.short }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:4px; margin-bottom:4px;">
+            <sc-for list="{{ gDow }}" as="hd" hint-placeholder-count="7">
+              <div style="text-align:center; font-size:10.5px; font-weight:900; letter-spacing:0.06em; color:{{ hd.color }};">{{ hd.label }}</div>
+            </sc-for>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:4px;">
+            <sc-for list="{{ gWeeks }}" as="wk" hint-placeholder-count="5">
+              <div style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:4px;">
+                <sc-for list="{{ wk.cells }}" as="cl" hint-placeholder-count="7">
+                  <div title="{{ cl.title }}" style="position:relative; min-height:64px; border:1px solid {{ cl.border }}; border-radius:10px; background:{{ cl.bg }}; padding:5px 7px; overflow:hidden;">
+                    <div style="font-size:12.5px; font-weight:800; color:{{ cl.numColor }};">{{ cl.num }}</div>
+                    <div style="position:absolute; right:4px; top:20px; display:flex; gap:1px; opacity:0.92;">
+                      <sc-for list="{{ cl.marks }}" as="mk" hint-placeholder-count="0">
+                        <svg viewBox="0 0 24 24" width="17" height="17"><path d="{{ mk.path }}" fill="{{ mk.color }}" fill-rule="evenodd"></path></svg>
+                      </sc-for>
+                    </div>
+                    <div style="position:absolute; left:6px; bottom:4px; right:4px; font-size:9.5px; font-weight:900; color:{{ cl.tagColor }}; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">{{ cl.tag }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+          <div style="font-size:12px; color:#a8ad9f; font-weight:600; margin-top:10px;">Same glyphs and colours the calendar app draws on its own grid — edit the days below and both views follow.</div>
+        </div>
         <div style="display:flex; flex-direction:column; gap:12px;">
           <sc-for list="{{ garbageCats }}" as="g" hint-placeholder-count="5">
             <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 18px;">
@@ -505,7 +638,7 @@ input::placeholder { color:#a8ad9f; }
       <div>
         <div style="display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px;">
           <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Activity log</h1>
-          <div onClick="{{ pushNow }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #5c7a58; color:#5c7a58; white-space:nowrap;" style-hover="background:#e7eee4;">Re-push cycles to calendar</div>
+          <div onClick="{{ pushNow }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #5c7a58; color:#5c7a58; white-space:nowrap;" style-hover="background:#e7eee4;">Push cycles to calendar now</div>
         </div>
         <div data-noprint="1" style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 18px; margin:14px 0 18px;">
           <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
@@ -795,11 +928,12 @@ class Component extends DCLogic {
         { id: 's1', name: 'Laundry basket', price: 1800, link: '', bought: false, suggested: false },
         { id: 's2', name: 'Drawer organizers', price: 1200, link: '', bought: false, suggested: false }
       ],
-      form: { cycleName: '', cycleDays: '7', holName: '', holDate: '', shopName: '', shopPrice: '', shopLink: '', poolTask: '', supName: '', supEvery: '30', supPrice: '', supKind: 'refill', cloudEmail: '', cloudPass: '', gLabel: '', gJp: '' },
+      form: { cycleName: '', cycleDays: '7', holName: '', holDate: '', shopName: '', shopPrice: '', shopLink: '', poolTask: '', supName: '', supEvery: '30', supPrice: '', supKind: 'refill', timerLabel: '', timerMins: '30', cloudEmail: '', cloudPass: '', gLabel: '', gJp: '' },
       savedAt: 0,
       budget: 5000,
       lastCheck: null, penalized: null, installed: now,
       notice: '', inspecting: false, inspectError: '',
+      timers: [], timerRev: 0, gMon: 0, riskAck: {},
       cloud: { status: 'off', email: '', msg: 'Local only — sign in to back up.' }
     };
   }
@@ -856,7 +990,7 @@ save(patch, entry) {
     try {
       const { data } = await this.sb.auth.getSession();
       const u = data && data.session && data.session.user;
-      if (u) { this.uidCloud = u.id; this.cloudState('on', 'Signed in — syncing.', u.email); this.cloudPull(true); }
+      if (u) { this.uidCloud = u.id; this.cloudState('on', 'Signed in — syncing.', u.email); this.cloudPull(true); this.pullCalAway(); }
       else this.cloudState('off', 'Local only — sign in to back up.');
     } catch (e) { this.cloudState('off', 'Cloud unreachable — local only.'); }
   }
@@ -880,7 +1014,7 @@ save(patch, entry) {
     const { error } = await this.sb.from('sukkiri_state').upsert(
       { user_id: this.uidCloud, payload: this.payload(), updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
     if (error) this.cloudState('err', 'Backup failed: ' + error.message);
-    else { this.cloudState('on', 'Backed up ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })); if (!quiet) this.save({ notice: 'Backed up to your account.' }); }
+    else { this.pushCalCloud(this.state); this.cloudState('on', 'Backed up ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })); if (!quiet) this.save({ notice: 'Backed up to your account.' }); }
   }
 
   async cloudPull(auto) {
@@ -912,6 +1046,7 @@ save(patch, entry) {
     this.save({ form: { ...this.state.form, cloudPass: '' } });
     this.cloudState('on', 'Signed in — syncing.', u.email);
     this.cloudPull(true);
+    this.pullCalAway();
   }
 
   async cloudSignOut() {
@@ -922,30 +1057,71 @@ save(patch, entry) {
 
   // ---------- calendar sync (calapp_sukkiri) ----------
   dkey(ts) { const d = new Date(ts); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+  CAL_COL = ['#c0392b', '#e67e22', '#2980b9', '#27ae60', '#8e44ad', '#16a085', '#7f8c8d'];
+
+  /* Fills the calendar-owned payload with Sukkiri's rules, leaving everything the
+     calendar owns (away, overrides, done, block, its own digital routines) intact. */
+  calPayload(st, p) {
+    p = p || {};
+    if (p.show === undefined) p.show = true;
+    if (p.wm === undefined) p.wm = true;
+    if (!p.block) p.block = { urg: true, any: false, away: true, hol: false };
+    if (!p.garbage) p.garbage = [];
+    if (!p.overrides) p.overrides = {};
+    if (!p.done) p.done = {};
+    if (!p.away) p.away = [];
+    const mineG = (st.garbage || []).filter(g => (g.days || []).length);
+    if (mineG.length) p.garbage = mineG.map(g => ({
+      id: g.id, label: g.jp ? g.jp + ' / ' + g.label : g.label, short: g.short,
+      icon: g.icon, days: g.days, weeks: g.weeks || [], color: g.color
+    }));
+    const keep = (p.cycles || []).filter(c => c.kind === 'digital');
+    p.cycles = keep.concat((st.cycles || []).map((c, i) => ({
+      id: 'sk_' + c.id, name: c.name, every: c.days, kind: 'home',
+      anchor: this.dkey(this.dueAt(c).getTime()), color: c.color || this.CAL_COL[(i + 4) % this.CAL_COL.length]
+    })));
+    return p;
+  }
+
   pushCal(st) {
-    const COL = ['#c0392b', '#e67e22', '#2980b9', '#27ae60', '#8e44ad', '#16a085', '#7f8c8d'];
     try {
       const raw = localStorage.getItem('calapp_sukkiri');
-      const p = raw ? JSON.parse(raw) : {};
-      if (p.show === undefined) p.show = true;
-      if (p.wm === undefined) p.wm = true;
-      if (!p.block) p.block = { urg: true, any: false, away: true, hol: false };
-      if (!p.garbage) p.garbage = [];
-      if (!p.overrides) p.overrides = {};
-      if (!p.done) p.done = {};
-      if (!p.away) p.away = [];
-      const mineG = (st.garbage || []).filter(g => (g.days || []).length);
-      if (mineG.length) p.garbage = mineG.map(g => ({
-        id: g.id, label: g.jp ? g.jp + ' / ' + g.label : g.label, short: g.short,
-        icon: g.icon, days: g.days, weeks: g.weeks || [], color: g.color
-      }));
-      p.cycles = (st.cycles || []).map((c, i) => ({
-        id: 'sk_' + c.id, name: c.name, every: c.days,
-        anchor: this.dkey(this.nextDue(c).getTime()), color: c.color || COL[(i + 4) % COL.length]
-      }));
+      const p = this.calPayload(st, raw ? JSON.parse(raw) : {});
       localStorage.setItem('calapp_sukkiri', JSON.stringify(p));
       return true;
     } catch (e) { return false; }
+  }
+
+  /* Cross-origin / cross-device bridge: the calendar reads calendar_app_sukkiri on load,
+     so write the merged payload straight into that table. */
+  async pushCalCloud(st) {
+    if (!this.sb || !this.uidCloud) return false;
+    try {
+      const { data } = await this.sb.from('calendar_app_sukkiri').select('payload').eq('user_id', this.uidCloud).maybeSingle();
+      const p = this.calPayload(st, Object.assign({}, (data && data.payload) || {}));
+      const { error } = await this.sb.from('calendar_app_sukkiri')
+        .upsert({ user_id: this.uidCloud, payload: p, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+      if (error) return false;
+      try { localStorage.setItem('calapp_sukkiri', JSON.stringify(p)); } catch (e) {}
+      return true;
+    } catch (e) { return false; }
+  }
+
+  /* Pull the calendar-owned half back (away days, skips) so the risk radar sees them
+     even when Sukkiri runs on its own port. */
+  async pullCalAway() {
+    if (!this.sb || !this.uidCloud) return;
+    try {
+      const { data } = await this.sb.from('calendar_app_sukkiri').select('payload').eq('user_id', this.uidCloud).maybeSingle();
+      const r = data && data.payload; if (!r) return;
+      const local = JSON.parse(localStorage.getItem('calapp_sukkiri') || '{}');
+      local.away = r.away || [];
+      local.overrides = r.overrides || {};
+      local.done = r.done || {};
+      local.block = r.block || local.block;
+      localStorage.setItem('calapp_sukkiri', JSON.stringify(local));
+      this.forceUpdate();
+    } catch (e) {}
   }
 
   // ---------- garbage rules (read from the calendar if it has them) ----------
@@ -1023,6 +1199,282 @@ save(patch, entry) {
     this.pushCal(this.state);
     this.syncSupplies();
     this.initCloud();
+    this.initTimers();
+  }
+
+  // ---------- due dates ----------
+  dueAt(c) { return this.effDue(c, 1); }
+
+  // ---------- miss-risk radar ----------
+  awayDays() { try { const p = JSON.parse(localStorage.getItem('calapp_sukkiri') || 'null'); return (p && p.away) || []; } catch (e) { return []; } }
+
+  riskVals(S) {
+    const D = this.D, today = new Date(); today.setHours(0, 0, 0, 0);
+    const away = this.awayDays(), cycles = S.cycles || [], ack = S.riskAck || {};
+    const SEV = {
+      late: { tag: 'MISSED', bg: '#fbe9f0', border: '#f2cdda', color: '#a83e66', dot: '#d95c8a' },
+      block: { tag: 'WILL CLASH', bg: '#f7edd8', border: '#e8d9b0', color: '#9a6c1c', dot: '#e0a83a' },
+      stack: { tag: 'STACKED', bg: '#f7edd8', border: '#e8d9b0', color: '#9a6c1c', dot: '#e0a83a' },
+      slip: { tag: 'SLIPPING', bg: '#eef2fa', border: '#cfdcef', color: '#2f5c8f', dot: '#5a8fc7' }
+    };
+    const byDay = {}, raw = [];
+    cycles.forEach(c => {
+      const d = this.dueAt(c), key = this.dkey(d.getTime());
+      const days = Math.round((d.getTime() - today.getTime()) / D);
+      (byDay[key] = byDay[key] || []).push(c);
+      const gaps = c.gaps || [];
+      const avg = gaps.length >= 2 ? Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length) : 0;
+      if (days < 0) raw.push({ id: c.id, sev: 'late', name: c.name, why: `The ${c.days}-day slot passed ${-days} day${-days > 1 ? 's' : ''} ago and it is still open`, act: 'Mark done', actKind: 'done', order: -1000 + days });
+      else if (away.includes(key)) raw.push({ id: c.id, sev: 'block', name: c.name, why: `Lands ${this.fmtDate(d.getTime())} — you marked that day away in the calendar`, act: 'Pull a week earlier', actKind: 'pull', order: days });
+      else if (avg && avg > Math.round(c.days * 1.35)) raw.push({ id: c.id, sev: 'slip', name: c.name, why: `Your last ${gaps.length} rounds averaged ${avg} days, not ${c.days} — the interval is tighter than your week`, act: `Loosen to ${avg} days`, actKind: 'loosen', to: String(avg), order: 500 + days });
+    });
+    Object.keys(byDay).forEach(k => {
+      const g = byDay[k]; if (g.length < 3) return;
+      const d = new Date(k + 'T00:00:00'), days = Math.round((d.getTime() - today.getTime()) / D);
+      if (days < 0 || days > 21) return;
+      raw.push({ id: g[0].id, sev: 'stack', name: `${g.length} phases land on ${this.fmtDate(d.getTime())}`, why: g.map(c => c.name).join(' · ') + ' — one of them will slip', act: 'Pull ' + g[0].name + ' earlier', actKind: 'pull', order: 200 + days });
+    });
+    const items = raw
+      .filter(r => !((ack[r.id + '|' + r.sev] || 0) > Date.now() - 6 * D))
+      .sort((a, b) => a.order - b.order)
+      .map(r => ({ ...r, to: r.to || '', ...SEV[r.sev] }));
+    const late = items.filter(i => i.sev === 'late').length;
+    return {
+      riskItems: items, hasRisk: items.length > 0,
+      riskTitle: late ? `${late} phase${late > 1 ? 's' : ''} already missed` : `${items.length} phase${items.length > 1 ? 's' : ''} at risk`,
+      riskSub: late ? 'Clear these first — everything behind them shifts.' : 'Nothing missed yet. Adjust now and it stays that way.',
+      riskAct: e => {
+        const ds = e.currentTarget.dataset, c = cycles.find(x => x.id === ds.id); if (!c) return;
+        if (ds.kind === 'done') this.save({
+          cycles: cycles.map(x => x.id === c.id ? { ...x, last: Date.now(), gaps: [...(x.gaps || []), Math.max(1, Math.round((Date.now() - x.last) / D))].slice(-5) } : x),
+          points: S.points + 10
+        }, { kind: 'done', text: `Done: ${c.name} (+10) — cleared from the risk radar` });
+        else if (ds.kind === 'pull') this.save({ cycles: cycles.map(x => x.id === c.id ? { ...x, last: x.last - 7 * D } : x) }, { kind: 'change', text: `${c.name} pulled a week earlier to dodge a clash` });
+        else if (ds.kind === 'loosen') this.save({ cycles: cycles.map(x => x.id === c.id ? { ...x, days: parseInt(ds.to, 10) || x.days } : x) }, { kind: 'change', text: `${c.name} interval loosened to ${ds.to} days` });
+      },
+      riskSnooze: e => {
+        const ds = e.currentTarget.dataset;
+        this.save({ riskAck: { ...(S.riskAck || {}), [ds.id + '|' + ds.sev]: Date.now() } }, { kind: 'info', text: 'Risk flag snoozed for a week' });
+      }
+    };
+  }
+
+  // ---------- cross-device timers ----------
+  TKEY = 'sukkiri_timers';
+  devName() {
+    try {
+      let n = localStorage.getItem('sukkiri_device'); if (n) return n;
+      const ua = navigator.userAgent;
+      n = /iPad/.test(ua) ? 'iPad' : /iPhone/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android phone' : /Macintosh/.test(ua) ? 'Mac' : /Windows/.test(ua) ? 'PC' : 'this device';
+      localStorage.setItem('sukkiri_device', n); return n;
+    } catch (e) { return 'this device'; }
+  }
+  initTimers() {
+    this._tick = setInterval(() => { this.fireDue(); if ((this.state.timers || []).length) this.forceUpdate(); }, 1000);
+    this._tpoll = setInterval(() => this.pullTimers(), 15000);
+    this._onVis = () => { if (!document.hidden) this.pullTimers(); };
+    document.addEventListener('visibilitychange', this._onVis);
+    this._onStore = e => { if (e.key === this.TKEY) this.adoptLocal(); };
+    window.addEventListener('storage', this._onStore);
+    setTimeout(() => this.pullTimers(), 3500);
+  }
+  componentWillUnmount() {
+    clearInterval(this._tick); clearInterval(this._tpoll);
+    document.removeEventListener('visibilitychange', this._onVis);
+    window.removeEventListener('storage', this._onStore);
+  }
+  adoptLocal() {
+    try {
+      const p = JSON.parse(localStorage.getItem(this.TKEY) || 'null');
+      if (p && (p.rev || 0) > (this.state.timerRev || 0)) this.setState({ timers: p.timers || [], timerRev: p.rev });
+    } catch (e) {}
+  }
+  writeTimers(timers, entry) {
+    const rev = Date.now();
+    this.save({ timers, timerRev: rev }, entry);
+    try { localStorage.setItem(this.TKEY, JSON.stringify({ timers, rev })); } catch (e) {}
+    this.pushTimers(timers, rev);
+  }
+  async pushTimers(timers, rev) {
+    if (!this.sb || !this.uidCloud) return;
+    try { await this.sb.from('sukkiri_timers').upsert({ user_id: this.uidCloud, payload: { timers, rev }, updated_at: new Date().toISOString() }, { onConflict: 'user_id' }); } catch (e) {}
+  }
+  async pullTimers() {
+    if (!this.sb || !this.uidCloud) return;
+    try {
+      const { data } = await this.sb.from('sukkiri_timers').select('payload').eq('user_id', this.uidCloud).maybeSingle();
+      const p = data && data.payload;
+      if (p && (p.rev || 0) > (this.state.timerRev || 0)) {
+        this.save({ timers: p.timers || [], timerRev: p.rev });
+        try { localStorage.setItem(this.TKEY, JSON.stringify(p)); } catch (e) {}
+      }
+    } catch (e) {}
+  }
+  minsFor(name) {
+    const s = (name || '').toLowerCase();
+    if (/cloth|wash|laundry|sock/.test(s)) return 45;
+    if (/bath|scrub|shower/.test(s)) return 25;
+    if (/sweep|mop|floor|vacuum/.test(s)) return 20;
+    if (/fridge|kitchen/.test(s)) return 30;
+    if (/futon|aircon|wardrobe|closet|bedsheet/.test(s)) return 40;
+    return 20;
+  }
+  startTimer(label, mins, cycleId) {
+    mins = Math.max(1, Math.min(600, Math.round(mins) || 20));
+    if (window.Notification && Notification.permission === 'default') { try { Notification.requestPermission(); } catch (e) {} }
+    const now = Date.now();
+    const t = { id: this.uid('t'), label, mins, cycleId: cycleId || '', startedAt: now, endsAt: now + mins * 60000, device: this.devName() };
+    this.writeTimers([...(this.state.timers || []), t], { kind: 'info', text: `Timer started on ${t.device}: ${label} · ${mins} min` });
+  }
+  fireDue() {
+    const now = Date.now();
+    this._fired = this._fired || {};
+    (this.state.timers || []).forEach(t => { if (t.endsAt <= now && !this._fired[t.id]) { this._fired[t.id] = 1; this.ring(t); } });
+  }
+  ring(t) {
+    try { if (window.Notification && Notification.permission === 'granted') new Notification('Sukkiri · ' + t.label, { body: t.mins + ' minutes are up.', tag: t.id }); } catch (e) {}
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      const ctx = this._actx || (this._actx = new AC());
+      if (ctx.state === 'suspended') ctx.resume();
+      [0, 0.4, 0.8].forEach(off => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = 880;
+        o.connect(g); g.connect(ctx.destination);
+        const t0 = ctx.currentTime + off;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.linearRampToValueAtTime(0.2, t0 + 0.03);
+        g.gain.linearRampToValueAtTime(0.0001, t0 + 0.32);
+        o.start(t0); o.stop(t0 + 0.34);
+      });
+    } catch (e) {}
+  }
+  timerVals(S) {
+    const now = Date.now(), list = (S.timers || []).slice().sort((a, b) => a.endsAt - b.endsAt), mine = this.devName();
+    const fmt = ms => { const s = Math.max(0, Math.round(ms / 1000)), m = Math.floor(s / 60); return m >= 60 ? Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm' : m + ':' + String(s % 60).padStart(2, '0'); };
+    const view = list.map(t => {
+      const left = t.endsAt - now, done = left <= 0;
+      return {
+        id: t.id, label: t.label, done, running: !done,
+        timeLeft: done ? 'Finished' : fmt(left),
+        sub: (done ? `${t.mins} min done · ` : `${t.mins} min · `) + (t.device === mine ? 'started here' : 'started on your ' + t.device) + ' at ' + new Date(t.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+        pct: String(Math.max(2, Math.min(100, Math.round((1 - left / Math.max(1, t.mins * 60000)) * 100)))),
+        bg: done ? '#fbe9f0' : '#e7eee4', border: done ? '#f2cdda' : '#cfdcc9',
+        color: done ? '#a83e66' : '#3f5540', bar: done ? '#d95c8a' : '#5c7a58',
+        finishLabel: t.cycleId ? '✓ Done +10' : '✓ Got it'
+      };
+    });
+    const presets = [['Washing machine', 45], ['Laundry soak', 20], ['Dryer', 60], ['Bathroom scrub', 25], ['Sweep & mop', 20], ['Focus tidy', 15]]
+      .map(([label, mins]) => ({ label, mins: String(mins), chip: `${label} · ${mins}m` }));
+    const cloudOn = S.cloud.status === 'on' || S.cloud.status === 'busy';
+    return {
+      timerView: view, hasTimers: view.length > 0,
+      timerPresets: presets,
+      timerSync: cloudOn ? 'Synced to your account — start it on the iPad, watch it finish on your phone.' : 'Sign in on the Log tab and timers follow you between devices.',
+      timerSyncColor: cloudOn ? '#5c7a58' : '#c98aa4',
+      startPreset: e => { const ds = e.currentTarget.dataset; this.startTimer(ds.label, parseInt(ds.mins, 10), ''); },
+      startCustom: () => {
+        const f = S.form, label = (f.timerLabel || '').trim() || 'Cleaning';
+        this.startTimer(label, parseInt(f.timerMins, 10) || 30, '');
+        this.save({ form: { ...f, timerLabel: '' } });
+      },
+      openPick: e => { const id = e.currentTarget.dataset.id; this.setState({ timerPick: S.timerPick === id ? '' : id }); },
+      startCycleTimer: e => {
+        const ds = e.currentTarget.dataset, c = (S.cycles || []).find(x => x.id === ds.id);
+        if (!c) return;
+        this.setState({ timerPick: '' });
+        this.startTimer(c.name, parseInt(ds.mins, 10) || this.minsFor(c.name), c.id);
+      },
+      extendTimer: e => {
+        const id = e.currentTarget.dataset.id;
+        const timers = (S.timers || []).map(t => t.id === id ? { ...t, mins: t.mins + 5, endsAt: Math.max(Date.now(), t.endsAt) + 5 * 60000 } : t);
+        this._fired = this._fired || {}; delete this._fired[id];
+        this.writeTimers(timers, { kind: 'info', text: '+5 minutes added to a running timer' });
+      },
+      stopTimer: e => {
+        const id = e.currentTarget.dataset.id, t = (S.timers || []).find(x => x.id === id);
+        this.writeTimers((S.timers || []).filter(x => x.id !== id), { kind: 'info', text: `Timer stopped: ${t ? t.label : ''}` });
+      },
+      finishTimer: e => {
+        const id = e.currentTarget.dataset.id, t = (S.timers || []).find(x => x.id === id);
+        const timers = (S.timers || []).filter(x => x.id !== id), rev = Date.now();
+        const patch = { timers, timerRev: rev };
+        if (t && t.cycleId && (S.cycles || []).some(c => c.id === t.cycleId)) {
+          patch.cycles = S.cycles.map(c => c.id === t.cycleId ? { ...c, last: Date.now(), gaps: [...(c.gaps || []), Math.max(1, Math.round((Date.now() - c.last) / this.D))].slice(-5) } : c);
+          patch.points = S.points + 10;
+        }
+        this.save(patch, { kind: 'done', text: t ? `${t.label} finished${patch.cycles ? ' (+10, cycle regenerated)' : ''}` : 'Timer finished' });
+        try { localStorage.setItem(this.TKEY, JSON.stringify({ timers, rev })); } catch (er) {}
+        this.pushTimers(timers, rev);
+      }
+    };
+  }
+
+  // ---------- trash month grid (calendar-app glyphs) ----------
+  GLYPH = {
+    flame: 'M12 2c3.2 4.2 6 6.3 6 10.2A6 6 0 1 1 6 12.2c0-2 .9-3.3 2.2-4.5 0 2 .8 3.1 1.8 3.1s1.5-1 1.5-3.1S10.6 4.2 12 2z',
+    recycle: 'M12 2.6l3.2 5.5H8.8L12 2.6z M5.2 21.4l-3.2-5.5 5.5-3.2 3.2 5.5-5.5 3.2z M18.8 21.4l-5.5-3.2 3.2-5.5 5.5 3.2-3.2 5.5z',
+    bottle: 'M10 2h4v2.6l1.9 3.1a3 3 0 0 1 .4 1.5V20a2 2 0 0 1-2 2h-4.6a2 2 0 0 1-2-2V9.2c0-.5.1-1 .4-1.5L10 4.6V2zm-.4 8.6h4.8v2.2H9.6v-2.2z',
+    can: 'M7 5.2c0-1.2 2.2-2.2 5-2.2s5 1 5 2.2v13.6c0 1.2-2.2 2.2-5 2.2s-5-1-5-2.2V5.2zm1.6 2.4v2h6.8v-2H8.6z',
+    paper: 'M6 2h7l5 5v15H6V2zm7 1.6V7h3.4L13 3.6zM8.4 10.4h7.2V12H8.4v-1.6zm0 3.4h7.2v1.6H8.4v-1.6zm0 3.4h4.8V19H8.4v-1.8z',
+    trash: 'M9 2.6h6v2h4.4v2H4.6v-2H9v-2zM6 8.6h12l-1.1 12.2a1.4 1.4 0 0 1-1.4 1.2H8.5a1.4 1.4 0 0 1-1.4-1.2L6 8.6z',
+    leaf: 'M21 3c-9.4 0-17 4.4-17 11.6 0 1.3.3 2.4.9 3.3L14 8.8l-8.4 10.6c.9.7 2 1 3.3 1C16.4 20.4 21 12.6 21 3z',
+    box: 'M12 2.2l9 4.3v11l-9 4.3-9-4.3v-11l9-4.3zm0 2.3L5.6 7.5 12 10.5l6.4-3L12 4.5z',
+    battery: 'M9 2h6v2.2h2.6V22H6.4V4.2H9V2zm-.6 6.4v2h7.2v-2H8.4z',
+    glass: 'M5 2.6h14L17 11l-4 3.4V19h3v2.4H8V19h3v-4.6L7 11 5 2.6zm2.6 2.4l.8 3.4h7.2l.8-3.4H7.6z'
+  };
+  gridVals(S) {
+    const off = S.gMon || 0, D = this.D;
+    const base = new Date(); base.setHours(0, 0, 0, 0); base.setDate(1); base.setMonth(base.getMonth() + off);
+    const m = base.getMonth(), todayKey = this.dkey(Date.now());
+    const start = new Date(base); start.setDate(1 - base.getDay());
+    const weeks = [];
+    for (let w = 0; w < 6; w++) {
+      const cells = []; let anyIn = false;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(start.getTime() + (w * 7 + i) * D);
+        const inM = d.getMonth() === m; if (inM) anyIn = true;
+        const cats = inM ? this.garbOn(d) : [];
+        const key = this.dkey(d.getTime()), dow = d.getDay(), isToday = key === todayKey;
+        cells.push({
+          num: String(d.getDate()),
+          bg: isToday ? '#f7edd8' : inM ? '#fcfcf9' : '#f4f5ec',
+          border: isToday ? '#e0a83a' : '#eaece0',
+          numColor: !inM ? '#ccd1c1' : dow === 0 ? '#c0392b' : dow === 6 ? '#2980b9' : '#3b4038',
+          marks: cats.map(g => ({ path: this.GLYPH[g.icon] || this.GLYPH.trash, color: g.color })),
+          tag: cats.map(g => (g.short || g.label || '').split(' ')[0]).join(' '),
+          tagColor: cats.length ? cats[0].color : 'transparent',
+          title: cats.map(g => (g.jp ? g.jp + ' / ' : '') + g.label + (g.note ? ' — ' + g.note : '')).join(' · ')
+        });
+      }
+      weeks.push({ cells });
+      if (!anyIn && w > 3) { weeks.pop(); break; }
+    }
+    const ups = [], t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 21 && ups.length < 4; i++) {
+      const d = new Date(t0.getTime() + i * D), cats = this.garbOn(d);
+      if (!cats.length) continue;
+      ups.push({
+        when: i === 0 ? 'TODAY · OUT BY 8:30' : i === 1 ? 'TOMORROW · BAG IT TONIGHT' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase(),
+        whenColor: i === 0 ? '#a83e66' : i === 1 ? '#9a6c1c' : '#9aa08e',
+        bg: i === 0 ? '#fbe9f0' : i === 1 ? '#f7edd8' : '#fcfcf9',
+        border: i === 0 ? '#f2cdda' : i === 1 ? '#e8d9b0' : '#e0e3d6',
+        jp: cats.map(c => c.jp || c.short || c.label).join('・'),
+        en: cats.map(c => c.label).join(' + '),
+        bag: cats.map(c => c.note || '').filter(Boolean).join(' · '),
+        path: this.GLYPH[cats[0].icon] || this.GLYPH.trash, color: cats[0].color
+      });
+    }
+    const DOWL = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    return {
+      gMonthLabel: base.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      gWeeks: weeks, gUpcoming: ups, hasUpcoming: ups.length > 0,
+      gDow: DOWL.map((label, i) => ({ label, color: i === 0 ? '#c0392b' : i === 6 ? '#2980b9' : '#a8ad9f' })),
+      gLegend: this.gcats().map(g => ({ path: this.GLYPH[g.icon] || this.GLYPH.trash, color: g.color, short: (g.short || g.label || '').split(' ')[0] })),
+      gPrev: () => this.setState({ gMon: (S.gMon || 0) - 1 }),
+      gNext: () => this.setState({ gMon: (S.gMon || 0) + 1 }),
+      gToday: () => this.setState({ gMon: 0 })
+    };
   }
 
   // ---------- helpers ----------
@@ -1209,7 +1661,7 @@ save(patch, entry) {
     }));
     return {
       logView, noLog: logView.length === 0,
-      logIntro: `${logView.length} entries · cycles are pushed to the calendar (calapp_sukkiri) on every change${S.lastPush ? ' · last push ' + this.fmtDate(S.lastPush) : ''}.`,
+      logIntro: `${logView.length} entries · cycles reach the calendar through calapp_sukkiri on this device and, when signed in, the calendar_app_sukkiri table on every device${S.lastPush ? ' · last push ' + this.fmtDate(S.lastPush) : ''}.`,
       cloudSignedIn: S.cloud.status === 'on' || S.cloud.status === 'busy',
       cloudSignedOut: S.cloud.status === 'off' || S.cloud.status === 'err',
       cloudDot: { on: '#5c7a58', busy: '#e67e22', err: '#a83e66', off: '#c3c8b8' }[S.cloud.status] || '#c3c8b8',
@@ -1220,7 +1672,16 @@ save(patch, entry) {
       cloudIn: () => this.cloudAuth('in'),
       cloudUp: () => this.cloudAuth('up'),
       cloudOut: () => this.cloudSignOut(),
-      pushNow: () => { const ok = this.pushCal(this.state); this.save({ lastPush: Date.now(), notice: ok ? `${this.state.cycles.length} cycles pushed to the calendar.` : 'Push failed — storage unavailable.' }, { kind: 'change', text: `Pushed ${this.state.cycles.length} cycles to calendar` }); }
+      pushNow: async () => {
+        const ok = this.pushCal(this.state);
+        const cloud = await this.pushCalCloud(this.state);
+        await this.pullCalAway();
+        this.save({ lastPush: Date.now(), notice: cloud
+          ? `${this.state.cycles.length} cycles sent to the calendar's account — they'll show on every device.`
+          : ok ? `${this.state.cycles.length} cycles pushed to the calendar on this device. Sign in to reach your other devices.`
+               : 'Push failed — storage unavailable.' }, { kind: 'change', text: cloud ? 'Cycles pushed to the calendar account' : 'Cycles pushed to the calendar (this device)' });
+      },
+      pushNowLocal: () => { const ok = this.pushCal(this.state); this.save({ lastPush: Date.now(), notice: ok ? `${this.state.cycles.length} cycles pushed to the calendar.` : 'Push failed — storage unavailable.' }, { kind: 'change', text: `Pushed ${this.state.cycles.length} cycles to calendar` }); }
     };
   }
 
@@ -1301,13 +1762,20 @@ save(patch, entry) {
       return ICON.sparkle;
     };
     const tasks = S.cycles.map(c => {
-      const due = this.nextDue(c).getTime();
+      const due = this.dueAt(c).getTime();
       const days = Math.round((due - new Date().setHours(0, 0, 0, 0)) / D);
       let dueLabel, chipBg, chipColor;
       if (days < 0) { dueLabel = `Overdue by ${-days}d`; chipBg = '#fbe9f0'; chipColor = '#a83e66'; }
       else if (days === 0) { dueLabel = 'Due today'; chipBg = '#f7edd8'; chipColor = '#9a6c1c'; }
       else { dueLabel = `Due in ${days}d`; chipBg = '#e7eee4'; chipColor = '#5c7a58'; }
+      const sug = this.minsFor(c.name);
       return { id: c.id, name: c.name, sub: `Every ${c.days} days · last done ${this.fmtDate(c.last)}`,
+        picking: S.timerPick === c.id,
+        pickOpts: [10, 15, 20, 25, 30, 45, 60, 90].map(mn => ({
+          mins: String(mn), label: mn === sug ? mn + 'm ·' : mn + 'm',
+          bg: mn === sug ? '#e7eee4' : '#fcfcf9', border: mn === sug ? '#5c7a58' : '#dde0d1',
+          color: mn === sug ? '#3f5540' : '#7c8274'
+        })),
         wkMark: c.wk ? '🗓 weekend' : '🗓 any day',
         wkBg: c.wk ? '#e7eee4' : 'transparent', wkColor: c.wk ? '#3f5540' : '#a8ad9f', wkBorder: c.wk ? '#cfdcc9' : '#dde0d1',
         dueLabel, chipBg, chipColor, _days: days, icon: iconFor(c.name), iconBg: days < 0 ? '#fbe9f0' : '#eef0e4', iconColor: days < 0 ? '#a83e66' : '#5c7a58' };
@@ -1386,6 +1854,7 @@ save(patch, entry) {
       isSupplies: S.screen === 'supplies', isLog: S.screen === 'log', isPrint: S.screen === 'print',
       isGarbage: S.screen === 'garbage',
       ...this.suppliesVals(S, now), ...this.logVals(S), ...this.printVals(S), ...this.garbageVals(S),
+      ...this.timerVals(S), ...this.riskVals(S), ...this.gridVals(S),
       todayLabel: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
       coachMsg, todayTasks: tasks,
       ...(() => {
@@ -1422,7 +1891,7 @@ save(patch, entry) {
       markDone: e => {
         const id = e.currentTarget.dataset.id, cyc = S.cycles.find(c => c.id === id);
         this.save({
-          cycles: S.cycles.map(c => c.id === id ? { ...c, last: Date.now() } : c),
+          cycles: S.cycles.map(c => c.id === id ? { ...c, last: Date.now(), gaps: [...(c.gaps || []), Math.max(1, Math.round((Date.now() - c.last) / this.D))].slice(-5) } : c),
           points: S.points + 10,
           notice: strict ? 'Done. Next cycle scheduled.' : 'Nice work! +10 points — cycle regenerated.'
         }, { kind: 'done', text: `Done: ${cyc ? cyc.name : 'cycle'} (+10) — next in ${cyc ? cyc.days : '?'} days` });
