@@ -69,15 +69,37 @@ window.SUKKIRI_PRINT = function (app, S) {
   });
 
   const modes = [['week', 'Week'], ['month', 'Month'], ['both', 'Both']];
+  /* Paper sizes, same trick the calendar app uses: inject an @page rule right before
+     window.print(), then remove it. --sk-sheet-h lets the sheet fill the page height. */
+  const PAPERS = {
+    a4:     { label: 'A4',     w: '210mm',  h: '297mm' },
+    a3:     { label: 'A3',     w: '297mm',  h: '420mm' },
+    letter: { label: 'Letter', w: '8.5in',  h: '11in'  }
+  };
+  const paper = PAPERS[P.paper] ? P.paper : 'a4';
+  const orient = P.orient === 'landscape' ? 'landscape' : 'portrait';
+  (function applyPage() {
+    let st = document.getElementById('sk-pr-page');
+    if (!st) { st = document.createElement('style'); st.id = 'sk-pr-page'; document.head.appendChild(st); }
+    st.textContent = `@page{size:${paper} ${orient};margin:10mm}`;
+  })();
   const parts = [['cycles', 'Cycles'], ['checkin', 'Photo check-in'], ['garbage', 'Garbage days'], ['deep', 'Deep-clean pool'], ['notes', 'Notes'], ['points', 'Points / streak']];
 
   return {
     print: P,
     printModes: modes.map(([id, label]) => ({ id, label, bg: (P.mode || 'week') === id ? '#fff' : 'transparent', color: (P.mode || 'week') === id ? '#3f5540' : '#7c8274' })),
     printParts: parts.map(([key, label]) => ({ key, label, mark: P[key] ? '✓' : '○', border: P[key] ? '#5c7a58' : '#cfd4c2', bg: P[key] ? '#e7eee4' : 'transparent', color: P[key] ? '#3f5540' : '#9aa08e' })),
-    setPrintMode: e => app.save({ print: { ...P, mode: e.currentTarget.dataset.mode } }),
-    togglePrintPart: e => { const k = e.currentTarget.dataset.key; app.save({ print: { ...P, [k]: !P[k] } }); },
-    doPrint: () => { app.save({}, { kind: 'info', text: `Printed ${P.mode || 'week'} sheet` }); setTimeout(() => window.print(), 150); },
+    setPrintMode: e => { const L = (app.state.print || {}); app.save({ print: { ...L, mode: e.currentTarget.dataset.mode } }); },
+    togglePrintPart: e => { const L = (app.state.print || {}); const k = e.currentTarget.dataset.key; app.save({ print: { ...L, [k]: !L[k] } }); },
+    printPapers: Object.keys(PAPERS).map(id => ({ id, label: PAPERS[id].label, bg: paper === id ? '#fff' : 'transparent', color: paper === id ? '#3f5540' : '#7c8274' })),
+    printOrients: [['portrait', 'Portrait'], ['landscape', 'Landscape']].map(([id, label]) => ({ id, label, bg: orient === id ? '#fff' : 'transparent', color: orient === id ? '#3f5540' : '#7c8274' })),
+    setPrintPaper: e => { const L = (app.state.print || {}); app.save({ print: { ...L, paper: e.currentTarget.dataset.paper } }); },
+    setPrintOrient: e => { const L = (app.state.print || {}); app.save({ print: { ...L, orient: e.currentTarget.dataset.orient } }); },
+    paperNote: `${PAPERS[paper].label} ${orient} — the preview below is this exact page. Set the printer to the same size, Margins: Default, Scale: 100%.`,
+    doPrint: () => {
+      app.save({}, { kind: 'info', text: `Printed ${P.mode || 'week'} sheet on ${PAPERS[paper].label} ${orient}` });
+      setTimeout(() => window.print(), 180);
+    },
     showWeekSheet: P.mode !== 'month', showMonthSheet: P.mode === 'month' || P.mode === 'both',
     weekRangeLabel: `Week of ${fmt(days[0])} – ${fmt(days[6])}, ${days[6].getFullYear()}`,
     weekDays, weekRows, checkinCells, weekGarbage,

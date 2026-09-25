@@ -1,16 +1,16 @@
 @echo off
 title Sukkiri local server
-REM Put this .bat in the SAME FOLDER as Sukkiri.dc.html and support.js,
+REM Put this .bat in the SAME FOLDER as index.html and support.js,
 REM then double-click it. Leave this window open while using the app.
 REM Same Python-finding logic as run-calendar-local.bat.
 cd /d "%~dp0"
 
-set "PAGE=Sukkiri.dc.html"
+set "PAGE=index.html"
 set "PORT=8091"
 
 if not exist "%PAGE%" (
   echo Could not find %PAGE% here.
-  echo Put this .bat in the same folder as Sukkiri.dc.html and support.js.
+  echo Put this .bat in the same folder as index.html and support.js.
   echo Current folder: %CD%
   pause & goto :eof
 )

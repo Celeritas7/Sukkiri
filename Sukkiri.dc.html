@@ -12,8 +12,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/akatsuki-client.js"></script>
+<script src="js/adapters/sukkiri-adapter.js"></script>
 <script src="js/data.js"></script>
 <script src="js/print.js"></script>
+<script src="js/weather.js"></script>
 <style>
 html, body { margin:0; padding:0; background:#f1f2ea; }
 *, *::before, *::after { box-sizing: border-box; }
@@ -24,16 +27,91 @@ a { color:#5c7a58; } a:hover { color:#d95c8a; }
 @keyframes twinkle { 0%, 100% { opacity:0.25; transform:scale(0.7); } 50% { opacity:1; transform:scale(1.15); } }
 @keyframes drift { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(9px, -5px); } }
 input::placeholder { color:#a8ad9f; }
-@page { size: A4; margin: 11mm; }
+@page { margin: 10mm; }
+/* Print-sheet geometry lives in custom properties on the root element (React owns the
+   inline style attribute, so fitSheets can never write there). --sk-k zooms the sheet
+   down until it fits the paper; --sk-view shrinks it to the preview column on screen. */
+:root { --sk-pw: 718px; --sk-ph: 1047px; --sk-k: 1; --sk-view: 1; --sk-mb: 26px; --sk-ml: 0px; }
+/* ONE layout for screen and print, so the ratio fitSheets measures governs the box it
+   measured: the sheet is the real paper box, the grid eats the leftover page height. */
+.sk-page {
+  width: calc(var(--sk-pw) / var(--sk-k)) !important;
+  height: calc(var(--sk-ph) / var(--sk-k)) !important;
+  max-width: none !important;
+  margin: 0 0 var(--sk-mb) var(--sk-ml) !important;
+  zoom: var(--sk-k);
+  transform: scale(var(--sk-view));
+  transform-origin: top left;
+  display: flex !important;
+  flex-direction: column;
+  break-inside: avoid; page-break-inside: avoid;
+}
+.sk-grid { flex:1 1 auto; min-height:0; grid-template-rows:auto !important; grid-auto-rows:minmax(max-content, 1fr) !important; }
+.sk-cell { min-height:0 !important; }
+.sk-foot { flex:0 0 auto; }
+.sk-notes { min-height:0 !important; }
+html.sk-measure .sk-page { height: auto !important; }
 @media print {
+  :root { --sk-view: 1 !important; --sk-mb: 0 !important; --sk-ml: 0px !important; }
+  * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
   [data-noprint] { display:none !important; }
   html, body { background:#fff !important; }
-  .sk-page { page-break-after:always; width:auto !important; border:none !important; box-shadow:none !important; margin:0 !important; }
-  .sk-page:last-child { page-break-after:auto; }
+  /* the app column is 960px centred with padding — on paper it must be the full page,
+     otherwise a wider landscape sheet overflows it and is cropped on the right */
+  .sk-main { max-width:none !important; margin:0 !important; padding:0 !important; }
+  .sk-page { border:none !important; box-shadow:none !important; }
+  /* only break BETWEEN sheets, never after the last one — an after-break emits a blank page */
+  .sk-page + .sk-page { break-before:page; page-break-before:always; }
 }
 </style>
 </helmet>
 <div style="min-height:100vh; background:#f1f2ea; font-family:'Nunito',sans-serif; color:#3b4038;">
+  <sc-if value="{{ showLogin }}" hint-placeholder-val="{{ false }}">
+    <div data-screen-label="Sign in" style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:32px 18px; box-sizing:border-box;">
+      <div style="width:100%; max-width:410px; display:flex; flex-direction:column; gap:22px;">
+        <div style="text-align:center;">
+          <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:40px; color:#3f5540; line-height:1;">Sukkiri</div>
+          <div style="font-size:13px; color:#a0a696; font-weight:700; margin-top:6px;">すっきり · room coach</div>
+        </div>
+        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:22px; padding:28px 26px; box-shadow:0 12px 40px rgba(59,64,56,0.08); display:flex; flex-direction:column; gap:16px;">
+          <div>
+            <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:24px; margin:0 0 6px; color:#3b4038;">Welcome back</h1>
+            <div style="font-size:14px; color:#7c8274; font-weight:600; line-height:1.5; text-wrap:pretty;">Sign in with the account you use for your calendar and cost apps.</div>
+          </div>
+          <sc-if value="{{ hasLoginMsg }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:13px; font-weight:700; color:{{ loginMsgColor }}; background:{{ loginMsgBg }}; border-radius:12px; padding:10px 13px; line-height:1.45;">{{ loginMsg }}</div>
+          </sc-if>
+          <div>
+            <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:6px;">EMAIL</div>
+            <input value="{{ form.cloudEmail }}" data-field="cloudEmail" onChange="{{ onField }}" type="email" autocomplete="email" placeholder="you@example.com" style="width:100%; box-sizing:border-box; border:1px solid #dde0d1; border-radius:12px; padding:12px 14px; font-family:'Nunito',sans-serif; font-size:15px; background:#fff; color:#3b4038; outline:none;">
+          </div>
+          <div>
+            <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:6px;">PASSWORD</div>
+            <input value="{{ form.cloudPass }}" data-field="cloudPass" onChange="{{ onField }}" onKeyDown="{{ cloudKey }}" type="password" autocomplete="current-password" placeholder="Your password" style="width:100%; box-sizing:border-box; border:1px solid #dde0d1; border-radius:12px; padding:12px 14px; font-family:'Nunito',sans-serif; font-size:15px; background:#fff; color:#3b4038; outline:none;">
+          </div>
+          <div onClick="{{ cloudIn }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:15px; padding:13px 18px; border-radius:999px; cursor:pointer; text-align:center;" style-hover="background:#4a6647;" style-active="transform:scale(0.98);">{{ signInLabel }}</div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="flex:1; height:1px; background:#e0e3d6;"></div>
+            <div style="font-size:12px; font-weight:800; color:#a8ad9f;">or</div>
+            <div style="flex:1; height:1px; background:#e0e3d6;"></div>
+          </div>
+          <div onClick="{{ cloudGoogle }}" style="display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; border:1.5px solid #dde0d1; color:#3b4038; font-weight:800; font-size:15px; padding:12px 18px; border-radius:999px; cursor:pointer;" style-hover="background:#f7f8f2; border-color:#cfd4c2;" style-active="transform:scale(0.98);">
+            <svg viewBox="0 0 48 48" width="18" height="18"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.090-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.970-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.180 1.48-4.93 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg>
+            <span>Continue with Google</span>
+          </div>
+          <div style="display:flex; justify-content:center; gap:6px; font-size:13.5px; font-weight:700; color:#7c8274;">
+            <span>New here?</span>
+            <span onClick="{{ cloudUp }}" style="color:#5c7a58; font-weight:800; cursor:pointer; text-decoration:underline; text-underline-offset:3px;">Create an account</span>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
+          <div onClick="{{ useLocal }}" style="font-size:13.5px; font-weight:800; color:#8b917f; cursor:pointer; padding:6px 10px;" style-hover="color:#5c7a58;">Continue on this device only →</div>
+          <div style="font-size:11px; color:#b3b8a8; font-weight:700;">Without an account, nothing reaches your calendar or cost app · build {{ buildId }}</div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ showApp }}" hint-placeholder-val="{{ true }}">
   <div data-noprint="1" style="display:flex; align-items:center; flex-wrap:wrap; gap:14px; padding:14px 22px; background:#fbfbf6; border-bottom:1px solid #e0e3d6;">
     <div style="display:flex; align-items:baseline; gap:8px; margin-right:8px;">
       <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:24px; color:#3f5540;">Sukkiri</div>
@@ -83,13 +161,259 @@ input::placeholder { color:#a8ad9f; }
       </div>
     </div>
   </sc-if>
-  <div style="max-width:960px; margin:0 auto; padding:26px 20px 60px;">
+  <div class="sk-main" style="max-width:960px; margin:0 auto; padding:26px 20px 60px;">
     <input type="file" accept="image/*" ref="{{ fileRef }}" onChange="{{ onFileChosen }}" style="display:none;">
 
     <sc-if value="{{ hasNotice }}" hint-placeholder-val="{{ false }}">
-      <div style="display:flex; align-items:center; gap:12px; background:#fbe9f0; border:1px solid #f2cdda; border-radius:14px; padding:12px 16px; margin-bottom:20px;">
+      <div data-noprint="1" style="display:flex; align-items:center; gap:12px; background:#fbe9f0; border:1px solid #f2cdda; border-radius:14px; padding:12px 16px; margin-bottom:20px;">
         <div style="flex:1; font-size:14px; font-weight:700; color:#a83e66;">{{ noticeText }}</div>
         <div onClick="{{ dismissNotice }}" style="cursor:pointer; color:#c98aa4; font-weight:800; padding:2px 8px;" style-hover="color:#a83e66;">✕</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCal }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:4px;">
+          <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0; color:#3b4038;">Calendar</h1>
+          <div style="font-size:13px; color:#8b917f; font-weight:700;">{{ wxPlace }}</div>
+        </div>
+        <p style="margin:0 0 16px; font-size:14.5px; color:#7c8274; line-height:1.55; max-width:62ch; text-wrap:pretty;">Trash days, cycles due, drying weather and your notes on one grid. Tap a day to open it.</p>
+
+        <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
+          <div onClick="{{ wxRefresh }}" style="cursor:pointer; font-size:12.5px; font-weight:800; color:#5c7a58; background:#e7eee4; border:1px solid #d5dfcf; border-radius:999px; padding:7px 14px;" style-hover="background:#dbe6d6;">↻ Refresh forecast</div>
+          <div onClick="{{ cToday }}" style="cursor:pointer; font-size:12.5px; font-weight:800; color:#7c8274; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:999px; padding:7px 14px;" style-hover="background:#f4f5ec;">Jump to today</div>
+        </div>
+
+        <sc-if value="{{ hasWxErr }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#f4f5ec; border:1px solid #e0e3d6; border-radius:14px; padding:11px 15px; margin-bottom:14px; font-size:13.5px; font-weight:700; color:#8b917f;">{{ wxErr }}</div>
+        </sc-if>
+
+        <div style="display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:7px; margin-bottom:16px;">
+          <sc-for list="{{ wxStrip }}" as="w" hint-placeholder-count="7">
+            <div style="background:{{ w.bg }}; border:1px solid {{ w.border }}; border-radius:13px; padding:9px 6px; display:flex; flex-direction:column; align-items:center; gap:3px; text-align:center;">
+              <div style="font-size:10px; font-weight:800; letter-spacing:0.05em; color:#8b917f;">{{ w.dow }}</div>
+              <div style="font-size:19px; line-height:1.1;">{{ w.icon }}</div>
+              <div style="font-size:12px; font-weight:800; color:#3b4038;">{{ w.hi }}</div>
+              <div style="font-size:10.5px; font-weight:700; color:#a8ad9f;">{{ w.lo }}</div>
+              <svg viewBox="0 0 24 24" width="15" height="15" style="display:{{ w.markShow }};"><path d="{{ w.markPath }}" fill="{{ w.markColor }}"></path></svg>
+              <div style="font-size:9.5px; font-weight:800; color:#a8ad9f;">{{ w.rh }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ hasBestDry }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; gap:10px; align-items:flex-start; background:#e6f2e7; border:1px solid #cfe3d2; border-radius:14px; padding:12px 16px; margin-bottom:10px;">
+            <svg viewBox="0 0 24 24" width="17" height="17" style="flex:none; margin-top:1px;"><path d="{{ dryLegendGood }}" fill="#2f7d4f"></path></svg>
+            <div style="flex:1; min-width:0;">
+              <div style="font-size:13.5px; font-weight:800; color:#2f7d4f; line-height:1.45;">{{ bestDryLabel }}</div>
+              <div style="font-size:12.5px; font-weight:700; color:#6f8b6c; margin-top:3px;">{{ bestSunLabel }}</div>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ hasRainyTrash }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; gap:10px; align-items:flex-start; background:#f7edd8; border:1px solid #e8d9b0; border-radius:14px; padding:12px 16px; margin-bottom:10px;">
+            <div style="font-size:15px;">☔</div>
+            <div style="flex:1; min-width:0; font-size:13.5px; font-weight:800; color:#9a6c1c; line-height:1.45;">{{ rainyTrash }}</div>
+          </div>
+        </sc-if>
+
+        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:20px; padding:16px; margin-top:14px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;">
+            <div onClick="{{ cPrev }}" style="cursor:pointer; font-size:18px; font-weight:800; color:#8b917f; padding:2px 12px; border-radius:10px;" style-hover="background:#f1f2ea; color:#3b4038;">‹</div>
+            <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:19px; color:#3b4038;">{{ cMonthLabel }}</div>
+            <div onClick="{{ cNext }}" style="cursor:pointer; font-size:18px; font-weight:800; color:#8b917f; padding:2px 12px; border-radius:10px;" style-hover="background:#f1f2ea; color:#3b4038;">›</div>
+          </div>
+          <div style="display:flex; justify-content:center; gap:6px; margin-bottom:12px;">
+            <sc-for list="{{ symThemes }}" as="t" hint-placeholder-count="3">
+              <div onClick="{{ setSymTheme }}" data-id="{{ t.id }}" style="cursor:pointer; display:flex; align-items:center; justify-content:center; width:38px; height:32px; border-radius:10px; background:{{ t.bg }}; border:1.5px solid {{ t.border }};" style-hover="border-color:#8aa882;">
+                <span style="display:inline-flex; align-items:center; background:{{ t.inner }}; border-radius:5px; padding:{{ t.innerPad }};">
+                  <svg viewBox="0 0 24 24" width="{{ t.size }}" height="{{ t.size }}" style="display:{{ t.showG }};"><path d="{{ t.path }}" fill="#2980b9"></path></svg>
+                  <span style="display:{{ t.showE }}; font-size:16px; line-height:1;">{{ t.emoji }}</span>
+                </span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:5px; margin-bottom:5px;">
+            <sc-for list="{{ cDow }}" as="d" hint-placeholder-count="7">
+              <div style="text-align:center; font-size:10.5px; font-weight:800; letter-spacing:0.06em; color:{{ d.color }};">{{ d.label }}</div>
+            </sc-for>
+          </div>
+          <sc-for list="{{ cWeeks }}" as="wk" hint-placeholder-count="5">
+            <div style="display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:5px; margin-bottom:5px;">
+              <sc-for list="{{ wk.cells }}" as="c" hint-placeholder-count="7">
+                <div onClick="{{ cPickDay }}" data-key="{{ c.key }}" title="{{ c.title }}" style="position:relative; cursor:pointer; min-height:74px; background:{{ c.bg }}; border:1.5px solid {{ c.border }}; border-radius:11px; padding:5px 6px; display:flex; flex-direction:column; gap:3px; overflow:hidden;" style-hover="border-color:#8aa882;">
+                  <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:2px; pointer-events:none;">
+                    <sc-for list="{{ c.marks }}" as="g" hint-placeholder-count="0">
+                      <svg viewBox="0 0 24 24" width="{{ g.wm }}" height="{{ g.wm }}" style="display:block;"><path d="{{ g.path }}" fill="{{ g.color }}" opacity="0.26"></path></svg>
+                    </sc-for>
+                  </div>
+                  <div style="position:relative; display:flex; align-items:center; justify-content:space-between; gap:3px;">
+                    <span style="font-size:13px; font-weight:800; color:{{ c.numColor }};">{{ c.num }}</span>
+                    <span style="font-size:11px;">{{ c.wxIcon }}</span>
+                  </div>
+                  <div style="position:relative; display:flex; align-items:center; gap:3px; flex-wrap:wrap; margin-top:1px;">
+                    <sc-for list="{{ c.syms }}" as="s" hint-placeholder-count="0">
+                      <span style="display:inline-flex; align-items:center; background:{{ s.chipBg }}; border-radius:5px; padding:{{ s.chipPad }};">
+                        <svg viewBox="0 0 24 24" width="{{ s.size }}" height="{{ s.size }}" style="display:{{ s.show }};"><path d="{{ s.path }}" fill="{{ s.color }}"></path></svg>
+                        <span style="display:{{ s.showEmoji }}; font-size:14px; line-height:1;">{{ s.emoji }}</span>
+                      </span>
+                    </sc-for>
+                    <span style="font-size:10px; font-weight:800; color:#a8ad9f;">{{ c.more }}</span>
+                  </div>
+                  <div style="position:relative; margin-top:auto; display:flex; align-items:center; gap:3px;">
+                    <svg viewBox="0 0 24 24" width="15" height="15" style="display:{{ c.dryShow }};"><path d="{{ c.dryPath }}" fill="{{ c.dryColor }}"></path></svg>
+                    <span style="margin-left:auto; width:5px; height:5px; border-radius:50%; background:{{ c.noteDot }};"></span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:10px; padding-top:11px; border-top:1px solid #eaece0;">
+            <sc-for list="{{ gLegend }}" as="g" hint-placeholder-count="3">
+              <div style="display:flex; align-items:center; gap:4px;">
+                <svg viewBox="0 0 24 24" width="14" height="14"><path d="{{ g.path }}" fill="{{ g.color }}" opacity="0.4"></path></svg>
+                <span style="font-size:10.5px; font-weight:800; color:#8b917f;">{{ g.short }}</span>
+              </div>
+            </sc-for>
+            <div style="display:flex; align-items:center; gap:5px;">
+              <svg viewBox="0 0 24 24" width="14" height="14"><path d="{{ dryLegendGood }}" fill="#2f7d4f"></path></svg>
+              <svg viewBox="0 0 24 24" width="14" height="14"><path d="{{ dryLegendOk }}" fill="#9a6c1c"></path></svg>
+              <svg viewBox="0 0 24 24" width="14" height="14"><path d="{{ dryLegendBad }}" fill="#b03a4a"></path></svg>
+              <span style="font-size:10.5px; font-weight:800; color:#8b917f;">only on days with a cycle</span>
+            </div>
+            <span style="width:6px; height:6px; border-radius:50%; background:#d95c8a;"></span>
+          </div>
+        </div>
+
+        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:20px; padding:20px 22px; margin-top:16px;">
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+            <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:20px; color:#3b4038;">{{ selLabel }}</div>
+            <div style="display:flex; align-items:center; gap:7px; background:{{ selDryBg }}; border-radius:999px; padding:5px 13px;">
+              <svg viewBox="0 0 24 24" width="16" height="16" style="display:{{ selDryShow }};"><path d="{{ selDryPath }}" fill="{{ selDryColor }}"></path></svg>
+              <span style="font-size:12.5px; font-weight:800; color:{{ selDryColor }};">{{ selDryScore }}</span>
+            </div>
+          </div>
+          <div style="font-size:14px; font-weight:700; color:#3b4038; margin-bottom:4px;">{{ selWxLine }}</div>
+          <div style="font-size:13px; font-weight:700; color:#8b917f;">{{ selDryWhy }} · {{ selDrySplit }}</div>
+
+          <sc-if value="{{ hasSelCats }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:16px;">
+              <div style="font-size:11px; font-weight:800; letter-spacing:0.07em; color:#a8ad9f; margin-bottom:7px;">GARBAGE</div>
+              <div style="display:flex; flex-direction:column; gap:7px;">
+                <sc-for list="{{ selCats }}" as="g" hint-placeholder-count="1">
+                  <div style="display:flex; align-items:flex-start; gap:9px; background:#f4f5ec; border-radius:12px; padding:9px 12px;">
+                    <svg viewBox="0 0 24 24" width="17" height="17" style="flex:none; margin-top:1px;"><path d="{{ g.path }}" fill="{{ g.color }}"></path></svg>
+                    <div style="flex:1; min-width:0;">
+                      <div style="font-size:13.5px; font-weight:800; color:#3b4038;">{{ g.jp }} · {{ g.label }}</div>
+                      <div style="font-size:12px; font-weight:700; color:#8b917f; margin-top:2px;">{{ g.note }}</div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ hasSelCycles }}" hint-placeholder-val="{{ false }}">
+            <div style="margin-top:16px;">
+              <div style="font-size:11px; font-weight:800; letter-spacing:0.07em; color:#a8ad9f; margin-bottom:7px;">CYCLES DUE</div>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                <sc-for list="{{ selCycles }}" as="c" hint-placeholder-count="2">
+                  <div style="display:flex; align-items:center; gap:9px; background:#f4f5ec; border-radius:12px; padding:9px 12px;">
+                    <svg viewBox="0 0 24 24" width="18" height="18" style="flex:none; display:{{ c.showG }};"><path d="{{ c.path }}" fill="{{ c.color }}"></path></svg>
+                    <span style="display:{{ c.showE }}; font-size:17px; line-height:1; flex:none;">{{ c.emoji }}</span>
+                    <span style="flex:1; min-width:0; font-size:13.5px; font-weight:800; color:#3b4038;">{{ c.name }}</span>
+                    <span style="font-size:11.5px; font-weight:700; color:#a8ad9f;">{{ c.every }}</span>
+                    <span style="font-size:11px; font-weight:800; color:{{ c.warnColor }}; background:{{ c.warnBg }}; border-radius:999px; padding:3px 9px;">{{ c.warn }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+
+          <div style="margin-top:18px;">
+            <div style="font-size:11px; font-weight:800; letter-spacing:0.07em; color:#a8ad9f; margin-bottom:7px;">NOTES</div>
+            <sc-for list="{{ selNotes }}" as="n" hint-placeholder-count="0">
+              <div style="display:flex; align-items:flex-start; gap:9px; background:#fbe9f0; border:1px solid #f2cdda; border-radius:12px; padding:9px 12px; margin-bottom:6px;">
+                <span style="font-size:11px; font-weight:800; color:#c98aa4; flex:none; margin-top:2px;">{{ n.time }}</span>
+                <span style="flex:1; min-width:0; font-size:13.5px; font-weight:700; color:#3b4038; line-height:1.5; text-wrap:pretty;">{{ n.text }}</span>
+                <span onClick="{{ delNote }}" data-id="{{ n.id }}" style="cursor:pointer; font-size:12px; font-weight:800; color:#c98aa4; flex:none;" style-hover="color:#a83e66;">✕</span>
+              </div>
+            </sc-for>
+            <sc-for list="{{ selAuto }}" as="a" hint-placeholder-count="0">
+              <div style="display:flex; align-items:flex-start; gap:9px; padding:6px 12px; margin-bottom:2px;">
+                <span style="font-size:11px; font-weight:800; color:#c9cfbe; flex:none; margin-top:2px;">{{ a.time }}</span>
+                <span style="flex:1; min-width:0; font-size:13px; font-weight:700; color:{{ a.color }}; line-height:1.5;">{{ a.text }}</span>
+              </div>
+            </sc-for>
+            <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+              <input value="{{ noteDraft }}" onChange="{{ onNoteDraft }}" placeholder="Add a line — what you cleaned, how it went..." style="flex:1; min-width:200px; font-family:'Nunito',sans-serif; font-size:13.5px; font-weight:700; color:#3b4038; background:#fff; border:1.5px solid #e0e3d6; border-radius:12px; padding:10px 13px; outline:none;" style-focus="border-color:#8aa882;">
+              <div onClick="{{ addNote }}" style="cursor:pointer; font-size:13px; font-weight:800; color:#fff; background:#5c7a58; border-radius:12px; padding:10px 20px;" style-hover="background:#4c6849;">Add</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 4px; color:#3b4038;">Settings</h1>
+        <p style="margin:0 0 18px; font-size:14.5px; color:#7c8274; line-height:1.55; max-width:62ch; text-wrap:pretty;">Your account connects Sukkiri to your calendar and cost apps. Your location is shared with them through one record, so you only set it once.</p>
+
+        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:20px; padding:20px 22px; margin-bottom:16px;">
+          <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:19px; color:#3b4038; margin-bottom:12px;">👤 Account &amp; sync</div>
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <div style="width:9px; height:9px; border-radius:50%; background:{{ cloudDot }}; flex-shrink:0;"></div>
+            <div style="flex:1; min-width:170px;">
+              <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ cloudTitle }}</div>
+              <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">{{ cloudSub }}</div>
+              <div style="font-size:11px; color:#b3b8a8; font-weight:700;">Build {{ buildId }}</div>
+            </div>
+            <sc-if value="{{ cloudSignedIn }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <div onClick="{{ cloudPush }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #5c7a58; color:#5c7a58; white-space:nowrap;" style-hover="background:#e7eee4;">Back up now</div>
+                <div onClick="{{ cloudPull }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274; white-space:nowrap;" style-hover="background:#f4f5ec;">Restore</div>
+                <div onClick="{{ pushNow }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274; white-space:nowrap;" style-hover="background:#f4f5ec;">Push cycles to calendar</div>
+                <div onClick="{{ cloudOut }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; color:#c98aa4; white-space:nowrap;" style-hover="color:#a83e66;">Sign out</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ cloudSignedOut }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ openLogin }}" style="cursor:pointer; background:#5c7a58; color:#fff; font-size:13px; font-weight:800; padding:9px 18px; border-radius:999px; white-space:nowrap;" style-hover="background:#4a6647;">Sign in</div>
+            </sc-if>
+          </div>
+        </div>
+
+        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:20px; padding:20px 22px;">
+          <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:19px; color:#3b4038; margin-bottom:4px;">📍 Location</div>
+          <div style="font-size:13px; font-weight:700; color:{{ locStatusColor }}; background:{{ locStatusBg }}; border-radius:12px; padding:10px 13px; margin:10px 0 16px; line-height:1.5;">{{ locStatus }}</div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:12px;">
+            <div>
+              <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:5px;">LABEL</div>
+              <input value="{{ locLabel }}" onChange="{{ onLocLabel }}" placeholder="Saitama-shi, Minami-ku" style="width:100%; box-sizing:border-box; font-family:'Nunito',sans-serif; font-size:13.5px; font-weight:700; color:#3b4038; background:#fff; border:1.5px solid #e0e3d6; border-radius:12px; padding:10px 13px; outline:none;" style-focus="border-color:#8aa882;">
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:5px;">WARD (DRIVES GARBAGE RULES)</div>
+              <input value="{{ locWard }}" onChange="{{ onLocWard }}" placeholder="Minami-ku" style="width:100%; box-sizing:border-box; font-family:'Nunito',sans-serif; font-size:13.5px; font-weight:700; color:#3b4038; background:#fff; border:1.5px solid #e0e3d6; border-radius:12px; padding:10px 13px; outline:none;" style-focus="border-color:#8aa882;">
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:5px;">LATITUDE</div>
+              <input value="{{ locLat }}" onChange="{{ onLocLat }}" placeholder="35.8617" style="width:100%; box-sizing:border-box; font-family:'Nunito',sans-serif; font-size:13.5px; font-weight:700; color:#3b4038; background:#fff; border:1.5px solid #e0e3d6; border-radius:12px; padding:10px 13px; outline:none;" style-focus="border-color:#8aa882;">
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:5px;">LONGITUDE</div>
+              <input value="{{ locLon }}" onChange="{{ onLocLon }}" placeholder="139.6455" style="width:100%; box-sizing:border-box; font-family:'Nunito',sans-serif; font-size:13.5px; font-weight:700; color:#3b4038; background:#fff; border:1.5px solid #e0e3d6; border-radius:12px; padding:10px 13px; outline:none;" style-focus="border-color:#8aa882;">
+            </div>
+            <div>
+              <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:5px;">TIMEZONE</div>
+              <input value="{{ locTz }}" onChange="{{ onLocTz }}" placeholder="Asia/Tokyo" style="width:100%; box-sizing:border-box; font-family:'Nunito',sans-serif; font-size:13.5px; font-weight:700; color:#3b4038; background:#fff; border:1.5px solid #e0e3d6; border-radius:12px; padding:10px 13px; outline:none;" style-focus="border-color:#8aa882;">
+            </div>
+          </div>
+
+          <sc-if value="{{ locEditable }}" hint-placeholder-val="{{ true }}">
+            <div onClick="{{ saveLoc }}" style="display:inline-block; cursor:pointer; margin-top:16px; font-size:13.5px; font-weight:800; color:#fff; background:#5c7a58; border-radius:12px; padding:11px 22px;" style-hover="background:#4c6849;">Save location & refresh weather</div>
+          </sc-if>
+          <div style="font-size:12.5px; font-weight:700; color:#a8ad9f; margin-top:12px;">{{ wxUpdated }} · shared under <code>app_location</code>, owner: {{ locOwner }}</div>
+        </div>
       </div>
     </sc-if>
 
@@ -224,6 +548,12 @@ input::placeholder { color:#a8ad9f; }
               <div style="flex:1; min-width:160px;">
                 <div style="font-weight:800; font-size:15.5px; color:#3b4038;">{{ t.name }}</div>
                 <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">{{ t.sub }}</div>
+                <sc-if value="{{ t.hasDry }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:inline-flex; align-items:center; gap:7px; margin-top:6px; background:{{ t.dryBg }}; border-radius:999px; padding:4px 11px;">
+                    <span style="font-size:11.5px; font-weight:800; color:{{ t.dryColor }};">{{ t.dryFlag }}</span>
+                    <span style="font-size:11.5px; font-weight:700; color:{{ t.dryColor }}; opacity:0.85;">{{ t.dryFix }}</span>
+                  </div>
+                </sc-if>
               </div>
               <div style="font-size:12.5px; font-weight:800; padding:5px 12px; border-radius:999px; background:{{ t.chipBg }}; color:{{ t.chipColor }}; white-space:nowrap;">{{ t.dueLabel }}</div>
               <div onClick="{{ toggleWk }}" data-id="{{ t.id }}" title="Weekend-only or any day" style="cursor:pointer; font-size:11.5px; font-weight:800; padding:5px 11px; border-radius:999px; border:1.5px solid {{ t.wkBorder }}; background:{{ t.wkBg }}; color:{{ t.wkColor }}; white-space:nowrap;">{{ t.wkMark }}</div>
@@ -425,7 +755,7 @@ input::placeholder { color:#a8ad9f; }
     <sc-if value="{{ isShop }}" hint-placeholder-val="{{ false }}">
       <div>
         <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Shopping list</h1>
-        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">Organizing gear to buy — inspection reports suggest items here too.</div>
+        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">Organizing gear to buy — inspection reports suggest items here too. Tick the items you want, then send them to the cost app as one request.</div>
         <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 18px; margin-bottom:14px;">
           <div style="display:flex; align-items:center; gap:8px;">
             <div style="font-size:12.5px; font-weight:800; color:#8b917f;">Monthly budget ¥</div>
@@ -434,8 +764,28 @@ input::placeholder { color:#a8ad9f; }
           <div style="font-size:13.5px; font-weight:800; color:#5c7a58;">{{ spentLabel }}</div>
           <div style="font-size:13.5px; font-weight:800; color:{{ remainColor }};">{{ remainLabel }}</div>
           <div style="flex:1;"></div>
-          <div onClick="{{ sendToCostApp }}" style="background:#d95c8a; border:1.5px solid #d95c8a; color:#fff; font-weight:800; font-size:12.5px; padding:8px 16px; border-radius:999px; cursor:pointer; white-space:nowrap;" style-hover="background:#c74a78;">Send request to cost app</div>
+          <sc-if value="{{ hasSelectable }}" hint-placeholder-val="{{ false }}">
+            <div onClick="{{ selectAllOpen }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 14px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274; white-space:nowrap;" style-hover="background:#f4f5ec;">Select all</div>
+          </sc-if>
+          <div onClick="{{ sendToCostApp }}" style="background:{{ sendBg }}; border:1.5px solid {{ sendBorder }}; color:#fff; font-weight:800; font-size:12.5px; padding:8px 16px; border-radius:999px; cursor:pointer; white-space:nowrap;" style-hover="filter:brightness(0.94);">{{ sendLabel }}</div>
         </div>
+        <sc-if value="{{ hasCostReqs }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:14px;">
+            <div style="font-size:12.5px; font-weight:800; color:#8b917f;">Requests to the cost app</div>
+            <sc-for list="{{ costReqView }}" as="rq" hint-placeholder-count="1">
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:14px; padding:10px 16px;">
+                <div style="flex:1; min-width:160px;">
+                  <div style="font-weight:800; font-size:13.5px; color:#3b4038;">{{ rq.summary }}</div>
+                  <div style="font-size:12px; font-weight:600; color:#7c8274;">{{ rq.when }} · {{ rq.id }}</div>
+                  <sc-if value="{{ rq.hasErr }}" hint-placeholder-val="{{ false }}">
+                    <div style="font-size:12px; font-weight:700; color:#a83e66;">{{ rq.msg }}</div>
+                  </sc-if>
+                </div>
+                <div style="font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; background:{{ rq.bg }}; color:{{ rq.color }}; white-space:nowrap;">{{ rq.label }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
         <div style="display:flex; gap:10px; flex-wrap:wrap; background:#fcfcf9; border:1px dashed #cfd4c2; border-radius:16px; padding:16px 18px; margin-bottom:18px;">
           <input value="{{ form.shopName }}" data-field="shopName" onChange="{{ onField }}" placeholder="Item (e.g. Hanger set)" style="flex:2; min-width:150px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
           <input value="{{ form.shopPrice }}" data-field="shopPrice" onChange="{{ onField }}" type="number" min="0" placeholder="¥ price" style="width:110px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
@@ -453,7 +803,16 @@ input::placeholder { color:#a8ad9f; }
                 </sc-if>
               </div>
               <sc-if value="{{ it.suggested }}" hint-placeholder-val="{{ false }}">
-                <div style="font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; background:#fbe9f0; color:#a83e66;">suggested by inspection</div>
+                <div style="font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; background:#fbe9f0; color:#a83e66; white-space:nowrap;">suggested by inspection</div>
+              </sc-if>
+              <sc-if value="{{ it.isAuto }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; background:#e7eee4; color:#3f5540; white-space:nowrap;">🔁 auto</div>
+              </sc-if>
+              <sc-if value="{{ it.hasSt }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; background:{{ it.stBg }}; color:{{ it.stColor }}; white-space:nowrap;">{{ it.stLabel }}</div>
+              </sc-if>
+              <sc-if value="{{ it.canSel }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ toggleSel }}" data-id="{{ it.id }}" title="Include in the next request" style="width:22px; height:22px; border-radius:6px; border:2px solid {{ it.selBorder }}; background:{{ it.selBg }}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; cursor:pointer;">{{ it.selMark }}</div>
               </sc-if>
               <div style="font-weight:800; font-size:14.5px; color:#5c7a58;">{{ it.priceLabel }}</div>
               <div onClick="{{ deleteShopItem }}" data-id="{{ it.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800;" style-hover="color:#d95c8a;">✕</div>
@@ -478,7 +837,7 @@ input::placeholder { color:#a8ad9f; }
           <input value="{{ form.supPrice }}" data-field="supPrice" onChange="{{ onField }}" type="number" min="0" placeholder="¥ price" style="width:100px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
           <div onClick="{{ addSupply }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center;" style-hover="background:#4a6647;">Add</div>
         </div>
-        <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:8px;">Refills</div>
+        <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:8px;"><div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540;">Refills</div><div style="font-size:12px; font-weight:600; color:#9aa08e;">🔁 Auto-request sends a purchase request to the cost app by itself each time a refill comes due.</div></div>
         <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:22px;">
           <sc-for list="{{ refillView }}" as="p" hint-placeholder-count="3">
             <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:14px; padding:12px 16px;">
@@ -488,6 +847,7 @@ input::placeholder { color:#a8ad9f; }
               </div>
               <div style="font-size:12.5px; font-weight:800; padding:5px 12px; border-radius:999px; background:{{ p.chipBg }}; color:{{ p.chipColor }};">{{ p.dueLabel }}</div>
               <div style="font-weight:800; font-size:14px; color:#5c7a58;">{{ p.priceLabel }}</div>
+              <div onClick="{{ toggleAuto }}" data-id="{{ p.id }}" title="Send a purchase request to the cost app automatically when this comes due" style="background:{{ p.autoBg }}; color:{{ p.autoColor }}; border:1.5px solid {{ p.autoBorder }}; font-weight:800; font-size:12.5px; padding:7px 13px; border-radius:999px; cursor:pointer; white-space:nowrap;" style-hover="filter:brightness(0.95);">🔁 {{ p.autoLabel }}</div>
               <div onClick="{{ restock }}" data-id="{{ p.id }}" style="background:#3f5540; color:#fff; font-weight:800; font-size:12.5px; padding:8px 14px; border-radius:999px; cursor:pointer;" style-hover="background:#2e4030;">Restocked</div>
               <div onClick="{{ deleteSupply }}" data-id="{{ p.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800;" style-hover="color:#d95c8a;">✕</div>
             </div>
@@ -636,60 +996,12 @@ input::placeholder { color:#a8ad9f; }
       </div>
     </sc-if>
 
-    <sc-if value="{{ isLog }}" hint-placeholder-val="{{ false }}">
-      <div>
-        <div style="display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px;">
-          <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Activity log</h1>
-          <div onClick="{{ pushNow }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #5c7a58; color:#5c7a58; white-space:nowrap;" style-hover="background:#e7eee4;">Push cycles to calendar now</div>
-        </div>
-        <div data-noprint="1" style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 18px; margin:14px 0 18px;">
-          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-            <div style="width:9px; height:9px; border-radius:50%; background:{{ cloudDot }}; flex-shrink:0;"></div>
-            <div style="flex:1; min-width:170px;">
-              <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ cloudTitle }}</div>
-              <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">{{ cloudSub }}</div>
-            </div>
-            <sc-if value="{{ cloudSignedIn }}" hint-placeholder-val="{{ false }}">
-              <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <div onClick="{{ cloudPush }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #5c7a58; color:#5c7a58; white-space:nowrap;" style-hover="background:#e7eee4;">Back up now</div>
-                <div onClick="{{ cloudPull }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274; white-space:nowrap;" style-hover="background:#f4f5ec;">Restore</div>
-                <div onClick="{{ cloudOut }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; color:#c98aa4; white-space:nowrap;" style-hover="color:#a83e66;">Sign out</div>
-              </div>
-            </sc-if>
-          </div>
-          <sc-if value="{{ cloudSignedOut }}" hint-placeholder-val="{{ false }}">
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
-              <input value="{{ form.cloudEmail }}" data-field="cloudEmail" onChange="{{ onField }}" type="email" placeholder="email" style="flex:1; min-width:150px; border:1px solid #dde0d1; border-radius:10px; padding:9px 13px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-              <input value="{{ form.cloudPass }}" data-field="cloudPass" onChange="{{ onField }}" type="password" placeholder="password" style="flex:1; min-width:130px; border:1px solid #dde0d1; border-radius:10px; padding:9px 13px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-              <div onClick="{{ cloudIn }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13px; padding:9px 18px; border-radius:999px; cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:#4a6647;">Sign in</div>
-              <div onClick="{{ cloudUp }}" style="cursor:pointer; font-size:13px; font-weight:800; padding:9px 14px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274; align-self:center; white-space:nowrap;" style-hover="background:#f4f5ec;">Create account</div>
-            </div>
-            <div style="font-size:12px; color:#a8ad9f; font-weight:600; margin-top:8px;">Same account as your calendar app. Without signing in, Sukkiri stays on this device only.</div>
-          </sc-if>
-        </div>
-        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">{{ logIntro }}</div>
-        <sc-if value="{{ noLog }}" hint-placeholder-val="{{ false }}">
-          <div style="border:1.5px dashed #cfd4c2; border-radius:16px; padding:32px 20px; text-align:center; color:#9aa08e; font-weight:700; font-size:14.5px;">Nothing logged yet — every done cycle, added item, and inspection lands here.</div>
-        </sc-if>
-        <div style="display:flex; flex-direction:column; gap:0;">
-          <sc-for list="{{ logView }}" as="l" hint-placeholder-count="4">
-            <div style="display:flex; gap:14px; padding:10px 4px; border-bottom:1px solid #ecefe2;">
-              <div style="width:10px; height:10px; border-radius:50%; background:{{ l.dot }}; margin-top:5px; flex-shrink:0;"></div>
-              <div style="flex:1; min-width:0;">
-                <div style="font-size:14px; font-weight:700; color:#3b4038;">{{ l.text }}</div>
-                <div style="font-size:12px; color:#9aa08e; font-weight:600;">{{ l.when }}</div>
-              </div>
-            </div>
-          </sc-for>
-        </div>
-      </div>
-    </sc-if>
 
     <sc-if value="{{ isPrint }}" hint-placeholder-val="{{ false }}">
       <div>
         <div data-noprint="1">
           <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Print sheets</h1>
-          <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:18px;">A4 sheets with empty boxes for handwritten checkmarks. Pick what to include, preview below, then print.</div>
+          <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:18px;">Sheets with empty boxes for handwritten checkmarks — they fit whatever paper you pick (A4, A3…). Choose what to include, preview below, then print.</div>
           <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 18px; margin-bottom:22px;">
             <div style="display:flex; gap:4px; background:#eef0e4; border-radius:999px; padding:4px;">
               <sc-for list="{{ printModes }}" as="m" hint-placeholder-count="3">
@@ -705,14 +1017,28 @@ input::placeholder { color:#a8ad9f; }
             </div>
             <div onClick="{{ doPrint }}" style="background:#d95c8a; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer;" style-hover="background:#c74a78;">Print</div>
           </div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:12px 18px; margin:-10px 0 22px;">
+            <div style="font-size:11px; font-weight:800; color:#9aa08e; letter-spacing:0.07em;">PAPER</div>
+            <div style="display:flex; gap:4px; background:#eef0e4; border-radius:999px; padding:4px;">
+              <sc-for list="{{ printPapers }}" as="pa" hint-placeholder-count="3">
+                <div onClick="{{ setPrintPaper }}" data-paper="{{ pa.id }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:6px 14px; border-radius:999px; background:{{ pa.bg }}; color:{{ pa.color }};">{{ pa.label }}</div>
+              </sc-for>
+            </div>
+            <div style="display:flex; gap:4px; background:#eef0e4; border-radius:999px; padding:4px;">
+              <sc-for list="{{ printOrients }}" as="po" hint-placeholder-count="2">
+                <div onClick="{{ setPrintOrient }}" data-orient="{{ po.id }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:6px 14px; border-radius:999px; background:{{ po.bg }}; color:{{ po.color }};">{{ po.label }}</div>
+              </sc-for>
+            </div>
+            <div style="flex:1; min-width:180px; font-size:12px; font-weight:700; color:#9aa08e;">{{ paperNote }}</div>
+          </div>
         </div>
 
         <sc-if value="{{ showWeekSheet }}" hint-placeholder-val="{{ true }}">
           <div class="sk-page" style="background:#fff; color:#3b4038; width:100%; max-width:760px; margin:0 auto 26px; border:1px solid #e0e3d6; box-shadow:0 10px 30px rgba(59,64,56,0.08); padding:28px 30px; box-sizing:border-box; font-family:'Nunito',sans-serif;">
-            <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px; border-bottom:2.5px solid #3f5540; padding-bottom:10px; margin-bottom:14px;">
+            <div class="sk-foot" style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px; border-bottom:2.5px solid #3f5540; padding-bottom:10px; margin-bottom:14px;">
               <div>
-                <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:24px; color:#3f5540; line-height:1;">Sukkiri</div><div style="font-size:12px; color:#a0a696; font-weight:700; margin-top:3px; white-space:nowrap;">すっきり · weekly sheet</div>
-                <div style="font-size:13px; font-weight:700; color:#7c8274; margin-top:4px;">{{ weekRangeLabel }}</div>
+                <div style="font-size:12px; color:#a0a696; font-weight:800; letter-spacing:0.08em; text-transform:uppercase;">Sukkiri すっきり · weekly sheet</div>
+                <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:30px; color:#3f5540; line-height:1.05; margin-top:2px;">{{ weekRangeLabel }}</div>
               </div>
               <sc-if value="{{ print.points }}" hint-placeholder-val="{{ true }}">
                 <div style="display:flex; gap:10px;">
@@ -727,7 +1053,7 @@ input::placeholder { color:#a8ad9f; }
                 </div>
               </sc-if>
             </div>
-            <div style="display:grid; grid-template-columns:minmax(120px, 1.6fr) repeat(7, minmax(0, 1fr)); gap:0; border:1.5px solid #cfd4c2; border-radius:12px; overflow:hidden;">
+            <div class="sk-grid" style="display:grid; grid-template-columns:minmax(120px, 1.6fr) repeat(7, minmax(0, 1fr)); gap:0; border:1.5px solid #cfd4c2; border-radius:12px; overflow:hidden;">
               <div style="padding:8px 10px; background:#eef0e4; font-size:11px; font-weight:800; color:#5c7a58; letter-spacing:0.06em;">CYCLE</div>
               <sc-for list="{{ weekDays }}" as="wd" hint-placeholder-count="7">
                 <div style="padding:8px 4px; background:{{ wd.bg }}; text-align:center; border-left:1px solid #e0e3d6;">
@@ -773,7 +1099,7 @@ input::placeholder { color:#a8ad9f; }
                 </div>
               </sc-if>
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;">
+            <div class="sk-foot" style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;">
               <sc-if value="{{ print.deep }}" hint-placeholder-val="{{ true }}">
                 <div style="border:1.5px solid #cfd4c2; border-radius:12px; padding:10px 12px;">
                   <div style="font-size:11px; font-weight:800; color:#5c7a58; letter-spacing:0.06em; margin-bottom:6px;">DEEP-CLEAN POOL</div>
@@ -792,16 +1118,16 @@ input::placeholder { color:#a8ad9f; }
                 </div>
               </sc-if>
             </div>
-            <div style="margin-top:12px; font-size:10.5px; color:#a0a696; font-weight:700; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 12px;"><span style="white-space:nowrap;">Filled boxes = due that day · empty = free tick</span><span style="white-space:nowrap;">Sukkiri · printed {{ printedOn }}</span></div>
+            <div class="sk-foot" style="margin-top:12px; font-size:10.5px; color:#a0a696; font-weight:700; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 12px;"><span style="white-space:nowrap;">Filled boxes = due that day · empty = free tick</span><span style="white-space:nowrap;">Sukkiri · printed {{ printedOn }}</span></div>
           </div>
         </sc-if>
 
         <sc-if value="{{ showMonthSheet }}" hint-placeholder-val="{{ false }}">
           <div class="sk-page" style="background:#fff; color:#3b4038; width:100%; max-width:760px; margin:0 auto 26px; border:1px solid #e0e3d6; box-shadow:0 10px 30px rgba(59,64,56,0.08); padding:28px 30px; box-sizing:border-box; font-family:'Nunito',sans-serif;">
-            <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px; border-bottom:2.5px solid #3f5540; padding-bottom:10px; margin-bottom:14px;">
+            <div class="sk-foot" style="display:flex; align-items:flex-end; justify-content:space-between; gap:12px; border-bottom:2.5px solid #3f5540; padding-bottom:10px; margin-bottom:14px;">
               <div>
-                <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:24px; color:#3f5540; line-height:1;">Sukkiri</div><div style="font-size:12px; color:#a0a696; font-weight:700; margin-top:3px; white-space:nowrap;">すっきり · monthly sheet</div>
-                <div style="font-size:13px; font-weight:700; color:#7c8274; margin-top:4px;">{{ monthLabel }}</div>
+                <div style="font-size:12px; color:#a0a696; font-weight:800; letter-spacing:0.08em; text-transform:uppercase;">Sukkiri すっきり · monthly sheet</div>
+                <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:34px; color:#3f5540; line-height:1.05; margin-top:2px;">{{ monthLabel }}</div>
               </div>
               <sc-if value="{{ print.points }}" hint-placeholder-val="{{ true }}">
                 <div style="display:flex; gap:10px;">
@@ -816,12 +1142,12 @@ input::placeholder { color:#a8ad9f; }
                 </div>
               </sc-if>
             </div>
-            <div style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); border:1.5px solid #cfd4c2; border-radius:12px; overflow:hidden;">
+            <div class="sk-grid" style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); border:1.5px solid #cfd4c2; border-radius:12px; overflow:hidden;">
               <sc-for list="{{ monthHead }}" as="mh" hint-placeholder-count="7">
                 <div style="padding:6px; background:#eef0e4; text-align:center; font-size:10.5px; font-weight:800; color:{{ mh.color }}; border-left:1px solid #e0e3d6;">{{ mh.label }}</div>
               </sc-for>
               <sc-for list="{{ monthCells }}" as="mc" hint-placeholder-count="35">
-                <div style="min-height:82px; border-top:1px solid #e0e3d6; border-left:1px solid #e0e3d6; padding:4px 5px; background:{{ mc.bg }}; display:flex; flex-direction:column; gap:3px;">
+                <div class="sk-cell" style="min-height:82px; border-top:1px solid #e0e3d6; border-left:1px solid #e0e3d6; padding:4px 5px; background:{{ mc.bg }}; display:flex; flex-direction:column; gap:3px;">
                   <div style="display:flex; justify-content:space-between; align-items:center;">
                     <div style="font-family:'Zen Maru Gothic',sans-serif; font-size:13px; font-weight:900; color:{{ mc.numColor }};">{{ mc.num }}</div>
                     <div style="width:14px; height:14px; border:1.5px solid {{ mc.boxBorder }}; border-radius:4px;"></div>
@@ -846,7 +1172,7 @@ input::placeholder { color:#a8ad9f; }
                 </div>
               </sc-for>
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;">
+            <div class="sk-foot" style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:14px;">
               <sc-if value="{{ print.deep }}" hint-placeholder-val="{{ true }}">
                 <div style="border:1.5px solid #cfd4c2; border-radius:12px; padding:10px 12px;">
                   <div style="font-size:11px; font-weight:800; color:#5c7a58; letter-spacing:0.06em; margin-bottom:6px;">DEEP-CLEAN POOL</div>
@@ -860,17 +1186,18 @@ input::placeholder { color:#a8ad9f; }
                 </div>
               </sc-if>
               <sc-if value="{{ print.notes }}" hint-placeholder-val="{{ true }}">
-                <div style="border:1.5px solid #cfd4c2; border-radius:12px; padding:10px 12px; min-height:90px; background:repeating-linear-gradient(to bottom, transparent 0 21px, #ecefe2 21px 22px); background-position:0 26px;">
+                <div class="sk-notes" style="border:1.5px solid #cfd4c2; border-radius:12px; padding:10px 12px; min-height:90px; background:repeating-linear-gradient(to bottom, transparent 0 21px, #ecefe2 21px 22px); background-position:0 26px;">
                   <div style="font-size:11px; font-weight:800; color:#5c7a58; letter-spacing:0.06em;">NOTES</div>
                 </div>
               </sc-if>
             </div>
-            <div style="margin-top:12px; font-size:10.5px; color:#a0a696; font-weight:700; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 12px;"><span style="white-space:nowrap;">▢ = cycle due that day · corner box = day done</span><span style="white-space:nowrap;">Sukkiri · printed {{ printedOn }}</span></div>
+            <div class="sk-foot" style="margin-top:12px; font-size:10.5px; color:#a0a696; font-weight:700; display:flex; justify-content:space-between; flex-wrap:wrap; gap:4px 12px;"><span style="white-space:nowrap;">▢ = cycle due that day · corner box = day done</span><span style="white-space:nowrap;">Sukkiri · printed {{ printedOn }}</span></div>
           </div>
         </sc-if>
       </div>
     </sc-if>
   </div>
+  </sc-if>
 </div>
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;checkInDay&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Saturday&quot;,&quot;Sunday&quot;],&quot;default&quot;:&quot;Saturday&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;strictMode&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
@@ -883,6 +1210,7 @@ class Component extends DCLogic {
     const now = Date.now(), D = 86400000;
     return {
       screen: 'today', points: 100, streak: 0,
+      cMon: 0, cSel: '', dayNotes: {}, wx: null, wxErr: '', loc: null,
       cycles: [
         { id: 'c1', name: 'Clothes wash', days: 4, last: now - 3 * D, wk: true },
         { id: 'c2', name: 'Room sweep & mop', days: 3, last: now - 3 * D, wk: true },
@@ -916,7 +1244,7 @@ class Component extends DCLogic {
       ],
       garbageRules: ['Out by 8:30 AM on collection day', 'Bulky items 90cm–2m: apply in advance, city collects door-to-door', 'Never remove recyclables from the station', 'No business waste or moving-out volumes', 'さいたま市 ごみ分別アプリ has the full sorting search'],
       ward: 'Saitama-shi, Minami-ku',
-      print: { mode: 'week', cycles: true, checkin: true, garbage: true, deep: true, notes: true, points: true },
+      print: { mode: 'week', paper: 'a4', orient: 'portrait', cycles: true, checkin: true, garbage: true, deep: true, notes: true, points: true },
       areas: [
         { id: 'bed', name: 'Bed area', ideal: null, current: null },
         { id: 'desk', name: 'Desk', ideal: null, current: null },
@@ -946,13 +1274,14 @@ class Component extends DCLogic {
       const raw = localStorage.getItem('sukkiri_v1');
       if (raw) {
         const saved = JSON.parse(raw);
-        const s = Object.assign({}, seed, saved, { inspecting: false, inspectError: '', cloud: seed.cloud });
+        const s = Object.assign({}, seed, saved, { inspecting: false, inspectError: '', cloud: seed.cloud, authReady: false });
         s.form = Object.assign({}, seed.form, saved.form || {});
         const have = new Set((s.cycles || []).map(c => (c.name || '').toLowerCase()));
         const missing = seed.cycles.filter(c => !have.has(c.name.toLowerCase()));
         if (missing.length) { s.cycles = [...(s.cycles || []), ...missing]; this._migrated = true; }
         if (!saved.supplies) s.supplies = seed.supplies;
         if (!saved.wkMigrated) { s.cycles = (s.cycles || []).map(c => ({ ...c, wk: c.wk === undefined ? true : c.wk })); s.wkMigrated = true; }
+        if (s.screen === 'log') s.screen = 'settings';
         if (!saved.garbageSaitama) { s.garbage = seed.garbage; s.garbageRules = seed.garbageRules; s.garbageSaitama = true; }
         s.seedVersion = 3;
         if (!s.log) s.log = [];
@@ -970,7 +1299,7 @@ save(patch, entry) {
       return next;
     }, () => {
       const s = { ...this.state, inspecting: false, inspectError: '', savedAt: Date.now() };
-      delete s.cloud;
+      delete s.cloud; delete s.authReady;
       try { localStorage.setItem(this.KEY, JSON.stringify(s)); } catch (e) {}
       this.pushCal(s);
       this.queueCloud();
@@ -979,6 +1308,8 @@ save(patch, entry) {
 
   // ---------- Supabase cloud sync (sukkiri_state) ----------
   SB_URL = 'https://wylxvmkcrexwfpjpbhyy.supabase.co';
+  BUILD = 'sk-20260925-r017';
+  akLog(...a) { try { if (localStorage.getItem('akatsuki_debug') === '1') console.log('[ak]', ...a); } catch (e) {} }
   SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5bHh2bWtjcmV4d2ZwanBiaHl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2MzkxMDYsImV4cCI6MjA4NDIxNTEwNn0.6Bxo42hx4jwlJGWnfjiTpiDUsYfc1QLTN3YtrU1efak';
 
   cloudState(status, msg, email) {
@@ -988,12 +1319,23 @@ save(patch, entry) {
   async initCloud() {
     for (let i = 0; i < 40 && !(window.supabase && window.supabase.createClient); i++) await new Promise(r => setTimeout(r, 150));
     if (!(window.supabase && window.supabase.createClient)) { this.cloudState('off', 'Cloud library unavailable — local only.'); return; }
-    this.sb = window.supabase.createClient(this.SB_URL, this.SB_KEY);
+    this.sb = window.supabase.createClient(this.SB_URL, this.SB_KEY, { global: { headers: { 'x-akatsuki-app': 'sukkiri' } } });
+    for (let i = 0; i < 20 && !window.SukkiriHub; i++) await new Promise(r => setTimeout(r, 150));
+    this.skHub = window.SukkiriHub ? window.SukkiriHub(this.sb, { log: (...a) => this.akLog(...a) }) : null;
+    window.sukkiri = Object.assign(window.sukkiri || {}, { supabase: this.sb, hub: this.skHub, build: this.BUILD });
+    this.akLog('sukkiri build ' + this.BUILD, this.skHub ? 'hub ready' : 'hub scripts missing');
+    if (!this.skHub) console.warn('[ak] sukkiri-adapter.js / akatsuki-client.js not loaded — purchase requests stay local');
     try {
       const { data } = await this.sb.auth.getSession();
       const u = data && data.session && data.session.user;
-      if (u) { this.uidCloud = u.id; this.cloudState('on', 'Signed in — syncing.', u.email); this.cloudPull(true); this.pullCalAway(); }
+      if (u) this.onSignedIn(u);
       else this.cloudState('off', 'Local only — sign in to back up.');
+      this.setState({ authReady: true });
+      // Google returns here via redirect; the client reads the session from the URL.
+      this.sb.auth.onAuthStateChange((ev, sess) => {
+        const su = sess && sess.user;
+        if (ev === 'SIGNED_IN' && su && this.uidCloud !== su.id) this.onSignedIn(su);
+      });
     } catch (e) { this.cloudState('off', 'Cloud unreachable — local only.'); }
   }
 
@@ -1001,6 +1343,7 @@ save(patch, entry) {
     const s = { ...this.state, savedAt: Date.now() };
     delete s.cloud; delete s.inspecting; delete s.inspectError; delete s.notice;
     s.areas = (s.areas || []).map(a => ({ ...a, ideal: null, current: null }));
+    delete s.wx; delete s.wxErr; delete s.wxAt; // forecast is a local cache, not user data
     return s;
   }
 
@@ -1044,16 +1387,125 @@ save(patch, entry) {
     if (error) { this.cloudState('err', error.message); return; }
     const u = data && data.user;
     if (mode === 'up' && !(data.session)) { this.cloudState('off', '✓ Check your email to confirm your account!'); return; }
-    this.uidCloud = u.id;
     this.save({ form: { ...this.state.form, cloudPass: '' } });
+    this.onSignedIn(u);
+  }
+
+  onSignedIn(u) {
+    this.uidCloud = u.id;
     this.cloudState('on', 'Signed in — syncing.', u.email);
-    this.cloudPull(true);
+    this.cloudPull(true).then(() => setTimeout(() => { this.watchCost(); this.autoSend(); }, 300));
     this.pullCalAway();
+  }
+
+  async cloudGoogleAuth() {
+    if (!this.sb) { this.cloudState('err', 'Cloud not ready yet — try again.'); return; }
+    this.cloudState('busy', 'Opening Google…');
+    const { error } = await this.sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname } });
+    if (error) this.cloudState('err', error.message);
+  }
+
+  /* Akatsuki replies from Cost — started once, after sign-in and after state has loaded.
+     Sets status locally only; never republishes. */
+  watchCost() {
+    if (!this.skHub || this._stopCost) return;
+    this._stopCost = this.skHub.watchReplies((id, status, expenseIds) => {
+      const list = this.state.costReqs || [];
+      const hit = x => x.id === id || (x.prevIds || []).includes(id);
+      const r = list.find(hit);
+      if (!r) return;
+      if (r.id !== id) return;   // reply to a superseded id — the newer send owns this record now
+      if (r.status === status && JSON.stringify(r.expenseIds || []) === JSON.stringify(expenseIds || [])) return;
+      this.save({ costReqs: list.map(x => hit(x) ? { ...x, status, expenseIds: expenseIds || [], repliedAt: Date.now() } : x) },
+        { kind: 'shop', text: 'Cost app: request ' + id + ' → ' + status });
+    });
+  }
+
+  putCostReq(key, patch, entry) {
+    const l = this.state.costReqs || [], i = l.findIndex(x => x.key === key);
+    const nx = { ...(i >= 0 ? l[i] : {}), ...patch, key };
+    this.save({ costReqs: i >= 0 ? l.map((x, j) => j === i ? nx : x) : [nx, ...l].slice(0, 50) }, entry);
+    return nx;
+  }
+
+  /* Is this shop item inside a request Cost hasn't answered yet (or one still being sent)? */
+  reqOpen(item) {
+    if (!item.reqKey) return false;
+    const r = (this.state.costReqs || []).find(x => x.key === item.reqKey);
+    if (!r) return false;
+    if (r.sent === 'hub') return !r.status || r.status === 'pending' || r.status === 'approved';
+    return r.sent === 'sending' || r.sent === 'queued' || r.sent === 'error' || r.sent === 'local';
+  }
+  reqStatusOf(item) {
+    const r = item.reqKey && (this.state.costReqs || []).find(x => x.key === item.reqKey);
+    if (!r) return '';
+    return r.sent === 'hub' ? (r.status || 'pending') : r.sent;
+  }
+
+  /* Send a set of shop items as ONE request. Each new send mints its own id; a failed record is reused
+     (retry under the same id — the hub's rule). mode: 'manual' | 'auto'. */
+  async sendItems(items, mode) {
+    const S = this.state;
+    const failedKey = items.map(i => i.reqKey).find(k => k && (S.costReqs || []).some(r => r.key === k && r.sent !== 'hub'));
+    const failed = failedKey ? (S.costReqs || []).find(r => r.key === failedKey) : null;
+    const reqId = failed ? failed.id : this.uid('req'), key = failed ? failed.key : reqId;
+    const requestedAt = failed ? failed.requestedAt : new Date().toISOString();
+    const hubItems = items.map(i => { const o = { name: i.name, category: 'Room cleaning' }; if (i.price) o.yen = i.price; return o; });
+    const totalYen = items.reduce((a, i) => a + (i.price || 0), 0);
+    const ids = new Set(items.map(i => i.id));
+    this.save({ shop: S.shop.map(i => ids.has(i.id) ? { ...i, sel: false, reqKey: key } : i) });
+    const rec = this.putCostReq(key, { id: reqId, requestedAt, items: hubItems, count: hubItems.length, totalYen, category: 'Room cleaning', sent: 'sending', status: null, code: '', msg: '', auto: mode === 'auto' });
+    const sum = `${items.length} item${items.length > 1 ? 's' : ''} (¥${totalYen.toLocaleString()})`;
+    const tag = mode === 'auto' ? 'Auto-request' : 'Request';
+    if (!this.skHub || !this.uidCloud) {
+      this.putCostReq(key, { sent: 'local' }, { kind: 'shop', text: tag + ' saved locally — ' + sum });
+      if (mode === 'manual') this.save({ localOnly: false, notice: `Saved ${sum}. Sign in, then press Send again — it goes out as the same request.` });
+      return;
+    }
+    try {
+      const r = await this.sendCostHub(rec);
+      if (r.status === 'queued') {
+        this.putCostReq(key, { id: r.id, sent: 'queued' }, { kind: 'shop', text: tag + ' queued (offline) — ' + sum });
+        if (mode === 'manual') this.save({ notice: `You're offline — ${sum} will go to the cost app when you reconnect.` });
+      } else if (r.status === 'closed') {
+        this.putCostReq(key, { id: r.id, sent: 'error', code: 'AK202', msg: 'Cost kept closing this request — try again later.' });
+        if (mode === 'manual') this.save({ notice: 'Cost app already answered this request — try again later.' });
+      } else {
+        this.putCostReq(key, { id: r.id, sent: 'hub', status: 'pending' }, { kind: 'shop', text: `${tag} ${r.id} sent to cost app — ${sum}` });
+        this.save({ notice: mode === 'auto' ? `Auto-request sent — ${items.map(i => i.name).join(', ')} came due, so ${sum} went to the cost app.` : `Request sent — ${sum} is in the cost app's inbox.` });
+      }
+    } catch (e) {
+      const code = e.code || 'AK?';
+      this.putCostReq(key, { sent: 'error', code, msg: e.message || 'Send failed' }, { kind: 'shop', text: `${tag} not sent — ${code}` });
+      if (mode === 'manual') this.save({ notice: `Couldn't send to the cost app — ${code}: ${e.message || 'send failed'}` });
+      console.warn('[ak] purchase_request', code, e.message);
+    }
+  }
+
+  /* Recurring supplies with auto-request on: send every due, unsent auto item as one request.
+     Runs after sign-in and whenever supplies sync; never repeats an item Cost hasn't answered. */
+  autoSend() {
+    if (!this.skHub || !this.uidCloud) return;
+    const due = (this.state.shop || []).filter(i => i.autoReq && !i.bought && !i.reqKey);
+    if (due.length) this.sendItems(due, 'auto');
+  }
+
+  /* One request = one id. A closed id (Cost already answered) takes result.nextId, saved, then re-sent. */
+  async sendCostHub(rec) {
+    let id = rec.id;
+    for (let n = 0; n < 5; n++) {
+      const r = await this.skHub.sendPurchaseRequest({ id, items: rec.items, totalYen: rec.totalYen, requestedAt: rec.requestedAt, category: rec.category });
+      if (r && r.status === 'closed' && r.nextId) { const old = id; id = r.nextId; this.putCostReq(rec.key, { id, prevIds: [...(rec.prevIds || []), old] }); continue; }
+      return { ...(r || {}), id };
+    }
+    return { status: 'closed', id };
   }
 
   async cloudSignOut() {
     if (this.sb) { try { await this.sb.auth.signOut(); } catch (e) {} }
     this.uidCloud = null;
+    this.save({ localOnly: false });
+    if (this._stopCost) { this._stopCost(); this._stopCost = null; }
     this.cloudState('off', 'Signed out — local only.', '');
   }
 
@@ -1077,6 +1529,13 @@ save(patch, entry) {
       id: g.id, label: g.jp ? g.jp + ' / ' + g.label : g.label, short: g.short,
       icon: g.icon, days: g.days, weeks: g.weeks || [], color: g.color
     }));
+    // day notes: the calendar owns your day, so it gets Sukkiri's lines under its own key
+    const mineN = {};
+    Object.keys(st.dayNotes || {}).forEach(k => {
+      const t = (st.dayNotes[k] || []).map(n => n.text).join(' · ');
+      if (t) mineN[k] = t;
+    });
+    p.skNotes = mineN;
     const keep = (p.cycles || []).filter(c => c.kind === 'digital');
     p.cycles = keep.concat((st.cycles || []).map((c, i) => ({
       id: 'sk_' + c.id, name: c.name, every: c.days, kind: 'home',
@@ -1169,15 +1628,19 @@ save(patch, entry) {
       const open = (S.shop || []).some(i => i.supplyId === p.id && !i.bought);
       if (open) return;
       const due = p.kind === 'refill' ? (p.last || 0) + p.every * this.D <= now : !p.owned;
-      if (due) add.push({ id: this.uid('s'), name: p.name, price: p.price || 0, link: p.link || '', bought: false, suggested: false, supplyId: p.id });
+      if (due) add.push({ id: this.uid('s'), name: p.name, price: p.price || 0, link: p.link || '', bought: false, suggested: false, supplyId: p.id, autoReq: !!p.auto });
     });
     if (add.length) this.save(
       { shop: [...(S.shop || []), ...add] },
       { kind: 'supply', text: `${add.length} suppl${add.length > 1 ? 'ies' : 'y'} due for restock — added to shopping (${add.map(a => a.name).join(', ')})` }
     );
+    setTimeout(() => this.autoSend(), add.length ? 400 : 0);
   }
 
   componentDidMount() {
+    this._onFitResize = () => { if (this.state.screen === 'print') this.fitSheets(); };
+    window.addEventListener('resize', this._onFitResize);
+    setTimeout(() => { if (this.state.screen === 'print') this.fitSheets(); }, 60);
     const s = this.state, D = this.D;
     const strict = this.props.strictMode ?? false;
     const pen = strict ? 30 : 15;
@@ -1201,7 +1664,9 @@ save(patch, entry) {
     this.pushCal(this.state);
     this.syncSupplies();
     this.initCloud();
+    this._supT = setInterval(() => this.syncSupplies(), 6 * 3600 * 1000);
     this.initTimers();
+    this.loadWx();
     let tries = 0;
     const waitData = setInterval(() => {
       if (window.SUKKIRI_DATA) { clearInterval(waitData); this.applyDataFile(); }
@@ -1209,8 +1674,122 @@ save(patch, entry) {
     }, 150);
   }
 
+  // ---------- weather & drying (js/weather.js) ----------
+  /* Cycles whose success depends on drying weather, per the user: wash + sun-dry work.
+     Futon/mattress need real sunshine; laundry only needs dry air. */
+  DRY_CYCLES = { clothes: 'wash', socks: 'wash', sheet: 'wash', bedsheet: 'wash', pillow: 'wash', futon: 'sun', mattress: 'sun' };
+  dryNeed(c) {
+    const n = (c.name || '').toLowerCase();
+    for (const k in this.DRY_CYCLES) if (n.includes(k)) return this.DRY_CYCLES[k];
+    return null;
+  }
+  wxDay(key) { return (this.state.wx || {})[key] || null; }
+
+  /* ---------- cycle symbols ----------
+     Every cycle carries a drawn glyph and an emoji; the calendar's symbol theme picks
+     which one renders. shirt/broom/drawer come from the app's own ICON set so a cycle
+     wears the same symbol on Today and on the Calendar. */
+  CYC_GLYPH = {
+    shirt: 'M9.5 3 C9.5 4.2 10.6 5 12 5 C13.4 5 14.5 4.2 14.5 3 H17 L21 6.5 L18.5 9.5 L17 8.3 V21 H7 V8.3 L5.5 9.5 L3 6.5 L7 3 Z',
+    socks: 'M3.4 3 h4.8 v8.2 h2.6 a2.4 2.4 0 0 1 0 4.8 H3.4 Z M13 8 h4.8 v8.2 h2.6 a2.4 2.4 0 0 1 0 4.8 H13 Z',
+    sheet: 'M2.4 7.4 h2 v11.9 h-2 Z M6.2 8.6 h4.4 a1.5 1.5 0 0 1 1.5 1.5 v1.4 H6.2 a1.45 1.45 0 0 1 0 -2.9 Z M4.4 11.8 h14.2 a3 3 0 0 1 3 3 v1 H4.4 Z M4.4 16.4 h17.2 v1.4 H4.4 Z M4.4 18.4 h17.2 v1.4 H4.4 Z',
+    futon: 'M12 2.4a3.6 3.6 0 1 1 0 7.2 3.6 3.6 0 0 1 0-7.2zM4.4 4.1l1.3 1.3-1.1 1.1L3.3 5.2l1.1-1.1zm15.2 0l1.1 1.1-1.3 1.3-1.1-1.1 1.3-1.3zM2 14.6h20V18H2v-3.4zm1.6 4.6h16.8v2.6H3.6v-2.6z',
+    broom: 'M14.2 2.2 L16.8 4.8 L11.6 10 L9 7.4 Z M8 8.6 L12.4 13 C11 16.4 7.2 19.2 2.4 19.8 C4.6 15.6 5.2 11.8 8 8.6 Z',
+    /* folded-clothes stack. A wardrobe box is a rectangle, and at 14px no interior
+       detail survives — so the three tiers step in and out to shape the silhouette. */
+    drawer: 'M5 4.4h14v4.2H5z M2.8 10.4h18.4v4.2H2.8z M6.4 16.4h11.2v4.2H6.4z',
+    bath: 'M3 11.6h18v1.8a5.6 5.6 0 0 1-5.6 5.6H8.6A5.6 5.6 0 0 1 3 13.4v-1.8z M7.4 4a2.8 2.8 0 0 1 2.8 2.8v3.4H8.4V6.8a1 1 0 0 0-2 0v.8H4.6V6.8A2.8 2.8 0 0 1 7.4 4z',
+    // handles protrude so the outline reads as a fridge, not a stacked block
+    fridge: 'M4.8 2.4h12.4v7.4H4.8z M4.8 11h12.4v10.6H4.8z M17.2 4.4h2.2v2.6h-2.2z M17.2 12.6h2.2v2.6h-2.2z',
+    // wall unit + angled vane + two airflow wedges — the vane breaks the bar silhouette
+    aircon: 'M2.6 4h18.8v5.4H2.6z M5 10.8h14l-2 2.8H7z M8.4 16.2l2.8 3.6H8.6l-1.6-2.1z M14.8 16.2l2.8 3.6h-2.6l-1.6-2.1z',
+    desk: 'M2.6 7.4h18.8v2.6H2.6z M4.4 10.8h2.4v8.8H4.4z M17.2 10.8h2.4v8.8h-2.4z',
+    // fringed edge, so a doormat is not just a trapezoid
+    mat: 'M3.4 8.4h17.2l-1.8 7.6H5.2L3.4 8.4z M5.4 16.4h2.4v2.4H5.4z M9 16.4h2.4v2.4H9z M12.6 16.4h2.4v2.4h-2.4z M16.2 16.4h2.4v2.4h-2.4z',
+    // bin being WASHED — tilted pail with a brush and suds, so it can never be mistaken
+    // for the identical-shaped collection-day watermark sharing the cell
+    bin: 'M4.6 9.8h9.8l-.8 10.4a1.8 1.8 0 0 1-1.8 1.7H7.2a1.8 1.8 0 0 1-1.8-1.7L4.6 9.8z M6.1 6.6h6.8l.8 1.5h2.1v1.5H3.2V8.1h2.1l.8-1.5z M17.4 2.4l3.4 1.9-4.6 8.1-3.4-1.9 4.6-8.1z M15.6 13.9l2.6 1.5-1 1.7-2.6-1.5 1-1.7z'
+  };
+  /* Drying verdict as its own symbol trio — a hanger you can hang on, a droplet when
+     it is marginal, an umbrella when it must stay in. The old ☀/⚠/✕ marks read as an
+     asterisk and a generic warning triangle. */
+  DRY_GLYPH = {
+good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
+    ok: 'M12 2.8s5.2 6.4 5.2 9.7a5.2 5.2 0 0 1-10.4 0C6.8 9.2 12 2.8 12 2.8z',
+    bad: 'M11 4.2V2.4h2v1.8a8.7 8.7 0 0 1 8 8.6H3a8.7 8.7 0 0 1 8-8.6z M11 13.9h2v4.9a2.3 2.3 0 0 0 4.6 0h1.8a4.1 4.1 0 0 1-8.4 0v-4.9z'
+  };
+  CYC_EMOJI = { shirt: '👕', socks: '🧦', sheet: '🛏️', futon: '🌞', broom: '🧹', drawer: '👔', bath: '🛁', fridge: '🧊', aircon: '❄️', desk: '🪑', mat: '👟', bin: '🗑️' };
+
+  cycSym(name) {
+    const s = (name || '').toLowerCase();
+    let k = 'broom';
+    if (s.includes('sock')) k = 'socks';
+    else if (s.includes('cloth') || s.includes('laundry')) k = 'shirt';
+    else if (s.includes('sheet') || s.includes('pillow') || s.includes('bed')) k = 'sheet';
+    else if (s.includes('futon') || s.includes('mattress')) k = 'futon';
+    else if (s.includes('wardrobe') || s.includes('closet') || s.includes('drawer')) k = 'drawer';
+    else if (s.includes('bath') || s.includes('shower')) k = 'bath';
+    else if (s.includes('fridge') || s.includes('kitchen')) k = 'fridge';
+    else if (s.includes('aircon') || s.includes('air con') || s.includes('filter')) k = 'aircon';
+    else if (s.includes('desk')) k = 'desk';
+    else if (s.includes('mat')) k = 'mat';
+    else if (s.includes('bin') || s.includes('trash')) k = 'bin';
+    return { path: this.CYC_GLYPH[k], emoji: this.CYC_EMOJI[k] };
+  }
+
+  /* A stale local copy of js/weather.js (the pre-drying-model one exported readLocation /
+     fetchForecast) used to take the whole app down with "WX.readLoc is not a function".
+     Normalise the old names, and if the file predates the drying model say so in the
+     banner instead of throwing. */
+  wxApi() {
+    const W = window.SUKKIRI_WX;
+    if (!W) return null;
+    if (!W.readLoc && W.readLocation) W.readLoc = W.readLocation;
+    if (!W.writeLoc && W.writeLocation) W.writeLoc = W.writeLocation;
+    if (!W.load && W.fetchForecast) W.load = W.fetchForecast;
+    if (!W.readLoc) W.readLoc = () => ({ label: 'Saitama-shi, Minami-ku', lat: 35.8617, lon: 139.6455, tz: 'Asia/Tokyo', ward: 'Minami-ku' });
+    if (!W.writeLoc) W.writeLoc = p => Object.assign(W.readLoc(), p);
+    W.stale = typeof W.score !== 'function';
+    return W;
+  }
+
+  async loadWx(force) {
+    for (let i = 0; i < 30 && !window.SUKKIRI_WX; i++) await new Promise(r => setTimeout(r, 120));
+    const WX = this.wxApi();
+    if (!WX) { this.setState({ wxErr: 'Weather helper missing (js/weather.js).' }); return; }
+    this.setState({ loc: WX.readLoc() });
+    if (WX.stale) { this.setState({ wxErr: 'js/weather.js is an older version — copy the current one next to the app to get drying advice back.' }); return; }
+    try {
+      const days = await WX.load(force);
+      this.setState({ wx: days, wxErr: '', wxAt: Date.now() });
+    } catch (e) {
+      this.setState({ wxErr: 'Could not reach the weather service — drying advice is paused.' });
+    }
+  }
+
   // ---------- due dates ----------
   dueAt(c) { return this.effDue(c, 1); }
+
+  /* Every cycle occurrence that lands in [from, to], so the calendar can show what is
+     due on a day without re-deriving intervals in the template. */
+  dueMap(from, to) {
+    const map = {};
+    (this.state.cycles || []).forEach(c => {
+      // effDue honours the weekend-preferred roll, so enumerate it rather than stepping raw intervals
+      const t0 = new Date(c.last); t0.setHours(0, 0, 0, 0);
+      const span = Math.max(1, c.days || 1) * this.D;
+      const kFrom = Math.max(1, Math.floor((from - t0.getTime()) / span) - 1);
+      const kTo = Math.ceil((to - t0.getTime()) / span) + 1;
+      for (let k = kFrom; k <= kTo && k - kFrom < 200; k++) {
+        const t = this.effDue(c, k).getTime();
+        if (t < from || t > to) continue;
+        const key = this.dkey(t);
+        const arr = (map[key] = map[key] || []);
+        if (!arr.some(x => x.id === c.id)) arr.push(c);
+      }
+    });
+    return map;
+  }
 
   // ---------- miss-risk radar ----------
   awayDays() { try { const p = JSON.parse(localStorage.getItem('calapp_sukkiri') || 'null'); return (p && p.away) || []; } catch (e) { return []; } }
@@ -1564,7 +2143,8 @@ save(patch, entry) {
       if (days < 0) { dueLabel = `Overdue ${-days}d`; chipBg = '#fbe9f0'; chipColor = '#a83e66'; }
       else if (days === 0) { dueLabel = 'Restock today'; chipBg = '#f7edd8'; chipColor = '#9a6c1c'; }
       else { dueLabel = `Restock in ${days}d`; chipBg = '#e7eee4'; chipColor = '#5c7a58'; }
-      return { id: p.id, name: p.name, sub: `Every ${p.every} days · last restock ${this.fmtDate(p.last || now)}`, dueLabel, chipBg, chipColor, priceLabel: '¥' + (p.price || 0).toLocaleString(), _d: days };
+      return { id: p.id, name: p.name, sub: `Every ${p.every} days · last restock ${this.fmtDate(p.last || now)}`, dueLabel, chipBg, chipColor, priceLabel: '¥' + (p.price || 0).toLocaleString(), _d: days,
+        autoLabel: p.auto ? 'Auto-request on' : 'Auto-request', autoBg: p.auto ? '#3f5540' : '#fff', autoColor: p.auto ? '#fff' : '#7c8274', autoBorder: p.auto ? '#3f5540' : '#cfd4c2' };
     }).sort((a, b) => a._d - b._d);
     const onetimeView = sup.filter(p => p.kind === 'onetime' && !p.owned).map(p => ({
       id: p.id, name: p.name, priceLabel: '¥' + (p.price || 0).toLocaleString(),
@@ -1582,6 +2162,13 @@ save(patch, entry) {
     const upd = (id, fn, entry) => this.save({ supplies: sup.map(p => p.id === id ? fn(p) : p) }, entry);
     return {
       refillView, onetimeView, ownedView, noOwned: ownedView.length === 0,
+      toggleAuto: e => {
+        const id = e.currentTarget.dataset.id, p = sup.find(x => x.id === id); if (!p) return;
+        const on = !p.auto;
+        this.save({ supplies: sup.map(x => x.id === id ? { ...x, auto: on } : x), shop: (S.shop || []).map(i => i.supplyId === id && !i.bought && !i.reqKey ? { ...i, autoReq: on } : i) },
+          { kind: 'supply', text: `${on ? 'Auto-request on' : 'Auto-request off'} for ${p.name}` });
+        if (on) setTimeout(() => this.autoSend(), 300);
+      },
       restock: e => { const id = e.currentTarget.dataset.id, p = sup.find(x => x.id === id); upd(id, x => ({ ...x, last: Date.now() }), { kind: 'supply', text: `Restocked ${p ? p.name : 'supply'}` }); },
       markOwned: e => { const id = e.currentTarget.dataset.id, p = sup.find(x => x.id === id); upd(id, x => ({ ...x, owned: true, ownedAt: Date.now() }), { kind: 'supply', text: `Bought ${p ? p.name : 'item'} — moved to Owned` }); },
       unown: e => { const id = e.currentTarget.dataset.id, p = sup.find(x => x.id === id); upd(id, x => ({ ...x, owned: false }), { kind: 'supply', text: `${p ? p.name : 'Item'} marked for replacement` }); },
@@ -1593,6 +2180,248 @@ save(patch, entry) {
         if (kind === 'refill') { p.every = Math.max(1, parseInt(f.supEvery, 10) || 30); p.last = Date.now(); } else { p.owned = false; p.replaceMonths = 0; }
         this.save({ supplies: [...sup, p], form: { ...f, supName: '', supPrice: '' } }, { kind: 'change', text: `Added supply ${name} (${kind === 'refill' ? 'every ' + p.every + 'd' : 'one-time'})` });
       }
+    };
+  }
+
+  /* ---------- Calendar tab ----------
+     One month grid carrying four layers: garbage collection, cleaning cycles due,
+     a drying verdict from the weather, and the day's notes (auto log + your own lines). */
+  calVals(S) {
+    const D = this.D, off = S.cMon || 0;
+    const base = new Date(); base.setHours(0, 0, 0, 0); base.setDate(1); base.setMonth(base.getMonth() + off);
+    const m = base.getMonth(), todayKey = this.dkey(Date.now());
+    const start = new Date(base); start.setDate(1 - base.getDay());
+    const end = new Date(start.getTime() + 42 * D);
+    const due = this.dueMap(start.getTime(), end.getTime());
+    const notes = S.dayNotes || {};
+    const theme = S.cTheme || 'glyph';
+    const logBy = {};
+    (S.log || []).forEach(e => { const k = this.dkey(e.ts); (logBy[k] = logBy[k] || []).push(e); });
+
+    const weeks = [];
+    for (let w = 0; w < 6; w++) {
+      const cells = []; let anyIn = false;
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(start.getTime() + (w * 7 + i) * D);
+        const inM = d.getMonth() === m; if (inM) anyIn = true;
+        const key = this.dkey(d.getTime()), dow = d.getDay(), isToday = key === todayKey;
+        const cats = inM ? this.garbOn(d) : [];
+        const cyc = inM ? (due[key] || []) : [];
+        const wx = inM ? this.wxDay(key) : null;
+        const dry = wx && wx.dry;
+        const sel = key === S.cSel;
+        const mine = (notes[key] || []).length;
+        /* The drying wash is a CLASH indicator, not a weather readout: it only paints
+           when a cleaning phase is actually planned that day. On every other day the
+           weather emoji alone carries the forecast, so colour always means "look here". */
+        const clash = cyc.length && dry ? dry : null;
+        cells.push({
+          key, num: String(d.getDate()),
+          bg: sel ? '#e7eee4' : isToday ? '#f7edd8' : clash ? clash.bg : inM ? '#fcfcf9' : '#f4f5ec',
+          border: sel ? '#8aa882' : isToday ? '#e0a83a' : clash ? (clash.verdict === 'good' ? '#cfe3d2' : clash.verdict === 'ok' ? '#e8d9b0' : '#f2cdda') : '#eaece0',
+          numColor: !inM ? '#ccd1c1' : dow === 0 ? '#c0392b' : dow === 6 ? '#2980b9' : '#3b4038',
+          /* Garbage reads as a pale watermark filling the cell, like the calendar app —
+             it is a hint you notice, not a badge competing with the date. */
+          marks: cats.map(g => ({ path: this.GLYPH[g.icon] || this.GLYPH.trash, color: g.color, wm: cats.length > 2 ? 22 : cats.length > 1 ? 27 : 34 })),
+          /* cycles sit BELOW the date as their own symbol; the theme decides the form.
+             No words anywhere on the grid — symbol only. */
+          syms: cyc.slice(0, 4).map((c, n) => {
+            const s = this.cycSym(c.name);
+            const col = c.color || this.CAL_COL[(n + 4) % this.CAL_COL.length];
+            return {
+              path: s.path, emoji: s.emoji, color: col,
+              size: theme === 'bold' ? 16 : 14,
+              show: theme === 'emoji' ? 'none' : 'block',
+              showEmoji: theme === 'emoji' ? 'inline' : 'none',
+              chipBg: theme === 'bold' ? col + '22' : 'transparent',
+              chipPad: theme === 'bold' ? '2px 3px' : '0'
+            };
+          }),
+          more: cyc.length > 4 ? '·'.repeat(Math.min(3, cyc.length - 4)) : '',
+          wxIcon: wx ? wx.icon : '',
+          dryPath: clash ? this.DRY_GLYPH[clash.verdict] : '',
+          dryShow: clash ? 'block' : 'none',
+          dryColor: clash ? clash.color : 'transparent',
+          dryScore: clash ? String(clash.best) : '',
+          noteDot: mine ? '#d95c8a' : (logBy[key] || []).length && inM ? '#c9cfbe' : 'transparent',
+          title: [
+            cats.map(g => (g.jp ? g.jp + ' / ' : '') + g.label).join(' · '),
+            cyc.map(c => c.name).join(', '),
+            dry ? 'Drying ' + dry.best + '/100 — ' + dry.why : ''
+          ].filter(Boolean).join(' | ')
+        });
+      }
+      weeks.push({ cells });
+      if (!anyIn && w > 3) { weeks.pop(); break; }
+    }
+
+    // 7-day forecast strip
+    const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    const strip = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(t0.getTime() + i * D), key = this.dkey(d.getTime()), wx = this.wxDay(key);
+      const dry = wx && wx.dry;
+      strip.push({
+        key, dow: i === 0 ? 'TODAY' : d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+        icon: wx ? wx.icon : '·',
+        hi: wx ? wx.tmax + '°' : '–', lo: wx ? wx.tmin + '°' : '',
+        rh: wx && wx.rh != null ? wx.rh + '% RH' : '',
+        markPath: dry ? this.DRY_GLYPH[dry.verdict] : '', markShow: dry ? 'block' : 'none', markColor: dry ? dry.color : '#c9cfbe',
+        bg: dry ? dry.bg : '#fcfcf9', border: dry ? (dry.verdict === 'good' ? '#cfe3d2' : dry.verdict === 'ok' ? '#e8d9b0' : '#f2cdda') : '#eaece0',
+        score: dry ? String(dry.best) : '', use: dry ? dry.use : ''
+      });
+    }
+
+    // best drying day + rainy-garbage warning
+    const WX = this.wxApi();
+    const best = WX && !WX.stale && S.wx ? WX.bestDay(S.wx, 7, false) : null;
+    const bestSun = WX && !WX.stale && S.wx ? WX.bestDay(S.wx, 7, true) : null;
+    const dayName = t => new Date(t).toLocaleDateString('en-US', { weekday: 'long' });
+    let rainyTrash = '';
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(t0.getTime() + i * D), key = this.dkey(d.getTime());
+      const cats = this.garbOn(d), wx = this.wxDay(key);
+      if (!cats.length || !wx) continue;
+      const paper = cats.some(c => /paper|古紙|2/.test((c.jp || '') + (c.label || '')));
+      if (paper && (wx.precip > 1 || (wx.prob || 0) >= 60)) {
+        rainyTrash = `${i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : dayName(d)} is a paper collection and rain is forecast — double-bag the 古紙 or hold it for next week.`;
+        break;
+      }
+    }
+
+    // selected day panel
+    const selKey = S.cSel || todayKey;
+    const selD = new Date(selKey + 'T00:00:00');
+    const selWx = this.wxDay(selKey), selDry = selWx && selWx.dry;
+    const selCats = this.garbOn(selD);
+    const selCyc = this.dueMap(selD.getTime(), selD.getTime())[selKey] || [];
+    const auto = (logBy[selKey] || []).map(e => ({
+      id: 'a' + e.ts, text: e.text,
+      time: new Date(e.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      color: e.kind === 'penalty' ? '#b03a4a' : e.kind === 'inspect' ? '#2f7d4f' : '#7c8274'
+    }));
+    const mineList = (notes[selKey] || []).map(n => ({
+      id: n.id, text: n.text,
+      time: new Date(n.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    }));
+
+    return {
+      isCal: S.screen === 'cal',
+      cMonthLabel: base.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      cWeeks: weeks,
+      cDow: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((label, i) => ({ label, color: i === 0 ? '#c0392b' : i === 6 ? '#2980b9' : '#a8ad9f' })),
+      cPrev: () => this.setState({ cMon: (S.cMon || 0) - 1 }),
+      cNext: () => this.setState({ cMon: (S.cMon || 0) + 1 }),
+      cToday: () => this.setState({ cMon: 0, cSel: todayKey }),
+      cPickDay: e => this.setState({ cSel: e.currentTarget.dataset.key }),
+      /* Symbol theme — three icon-only treatments so you can find which one actually
+         gets you moving. No labels: each swatch IS its own preview. */
+      symThemes: [
+        { id: 'glyph', kind: 'g' }, { id: 'emoji', kind: 'e' }, { id: 'bold', kind: 'b' }
+      ].map(t => ({
+        id: t.id,
+        path: this.CYC_GLYPH.shirt, emoji: this.CYC_EMOJI.shirt,
+        showG: t.kind === 'e' ? 'none' : 'block',
+        showE: t.kind === 'e' ? 'inline' : 'none',
+        size: t.kind === 'b' ? 19 : 16,
+        inner: t.kind === 'b' ? '#2980b922' : 'transparent',
+        innerPad: t.kind === 'b' ? '3px 4px' : '0',
+        bg: theme === t.id ? '#e7eee4' : '#fcfcf9',
+        border: theme === t.id ? '#5c7a58' : '#e0e3d6'
+      })),
+      setSymTheme: e => this.save({ cTheme: e.currentTarget.dataset.id }),
+      dryLegendGood: this.DRY_GLYPH.good, dryLegendOk: this.DRY_GLYPH.ok, dryLegendBad: this.DRY_GLYPH.bad,
+      wxStrip: strip,
+      wxErr: S.wxErr || '', hasWxErr: !!S.wxErr,
+      wxPlace: (S.loc || {}).label || 'Saitama-shi, Minami-ku',
+      wxRefresh: () => this.loadWx(true),
+      bestDryLabel: best ? `${best.offset === 0 ? 'Today' : best.offset === 1 ? 'Tomorrow' : dayName(new Date(best.key + 'T00:00:00'))} is the best drying day this week — ${best.v}/100 on the line.` : '',
+      hasBestDry: !!best,
+      bestSunLabel: bestSun ? `Futon sun-dry: ${bestSun.offset === 0 ? 'today' : dayName(new Date(bestSun.key + 'T00:00:00'))}, ${bestSun.day.sun}h of sun.` : 'No properly sunny day in the next week — hold the futon.',
+      rainyTrash, hasRainyTrash: !!rainyTrash,
+
+      selLabel: selD.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+      selIsToday: selKey === todayKey,
+      selWxLine: selWx ? `${selWx.icon} ${selWx.word} · ${selWx.tmax}° / ${selWx.tmin}°${selWx.rh != null ? ' · ' + selWx.rh + '% RH' : ''}${selWx.sun ? ' · ' + selWx.sun + 'h sun' : ''}` : 'No forecast for this day.',
+      selDryPath: selDry ? this.DRY_GLYPH[selDry.verdict] : '',
+      selDryShow: selDry ? 'block' : 'none',
+      selDryColor: selDry ? selDry.color : '#a8ad9f',
+      selDryBg: selDry ? selDry.bg : '#f4f5ec',
+      selDryScore: selDry ? selDry.best + '/100' : '—',
+      selDryWhy: selDry ? selDry.why : 'Drying advice needs a forecast.',
+      selDrySplit: selDry ? `On the line ${selDry.out}/100 · indoors ${selDry.in}/100` : '',
+      selCats: selCats.map(g => ({
+        path: this.GLYPH[g.icon] || this.GLYPH.trash, color: g.color,
+        jp: g.jp || g.short || '', label: g.label, note: g.note || ''
+      })),
+      hasSelCats: selCats.length > 0,
+      selCycles: selCyc.map((c, n) => {
+        const need = this.dryNeed(c);
+        const bad = need && selDry && (need === 'sun' ? !selDry.futon : selDry.verdict === 'bad');
+        const sy = this.cycSym(c.name);
+        return {
+          id: c.id, name: c.name,
+          path: sy.path, emoji: sy.emoji,
+          showG: theme === 'emoji' ? 'none' : 'block',
+          showE: theme === 'emoji' ? 'inline' : 'none',
+          color: c.color || this.CAL_COL[(n + 4) % this.CAL_COL.length],
+          every: 'every ' + c.days + 'd',
+          warn: bad ? (need === 'sun' ? 'needs real sun' : 'poor drying') : '',
+          warnBg: bad ? '#fbe9f0' : 'transparent', warnColor: bad ? '#a83e66' : 'transparent'
+        };
+      }),
+      hasSelCycles: selCyc.length > 0,
+      selAuto: auto, hasSelAuto: auto.length > 0,
+      selNotes: mineList, hasSelNotes: mineList.length > 0,
+      noteDraft: (S.form || {}).note || '',
+      onNoteDraft: e => this.setState({ form: { ...S.form, note: e.target.value } }),
+      addNote: () => {
+        const t = ((S.form || {}).note || '').trim();
+        if (!t) return;
+        const list = [...(notes[selKey] || []), { id: this.uid('n'), ts: Date.now(), text: t }];
+        this.save({ dayNotes: { ...notes, [selKey]: list }, form: { ...S.form, note: '' } });
+      },
+      delNote: e => {
+        const id = e.currentTarget.dataset.id;
+        this.save({ dayNotes: { ...notes, [selKey]: (notes[selKey] || []).filter(n => n.id !== id) } });
+      }
+    };
+  }
+
+  /* ---------- Settings tab ----------
+     app_location is a shared record a future home-profile app will own. Until it sets
+     locked:true, Sukkiri is the editor; after that these fields go read-only. */
+  settingsVals(S) {
+    const WX = this.wxApi();
+    const loc = S.loc || (WX ? WX.readLoc() : { label: '', lat: 0, lon: 0, tz: 'Asia/Tokyo', ward: '' });
+    const locked = !!loc.locked && loc.owner !== 'sukkiri';
+    const setField = k => e => {
+      if (locked || !WX) return;
+      const v = e.target.value;
+      const patch = (k === 'lat' || k === 'lon') ? { [k]: parseFloat(v) } : { [k]: v };
+      this.setState({ loc: { ...loc, ...patch } });
+    };
+    return {
+      isSettings: S.screen === 'settings',
+      locLabel: loc.label || '', locLat: loc.lat == null ? '' : String(loc.lat), locLon: loc.lon == null ? '' : String(loc.lon),
+      locTz: loc.tz || 'Asia/Tokyo', locWard: loc.ward || '',
+      locOwner: loc.owner || 'sukkiri',
+      locLocked: locked, locEditable: !locked,
+      locStatus: locked
+        ? `Owned by "${loc.owner}" — edit it there. Sukkiri reads it for weather and garbage rules.`
+        : 'Sukkiri is editing this for now. When your home-profile app claims it, these fields turn read-only automatically.',
+      locStatusBg: locked ? '#f4f5ec' : '#f7edd8',
+      locStatusColor: locked ? '#7c8274' : '#9a6c1c',
+      onLocLabel: setField('label'), onLocLat: setField('lat'), onLocLon: setField('lon'),
+      onLocTz: setField('tz'), onLocWard: setField('ward'),
+      saveLoc: () => {
+        if (!WX) return;
+        const next = WX.writeLoc({ label: loc.label, lat: loc.lat, lon: loc.lon, tz: loc.tz, ward: loc.ward });
+        this.setState({ loc: next });
+        this.save({}, { kind: 'change', text: `Location set to ${next.label} (${next.lat}, ${next.lon})` });
+        this.loadWx(true);
+      },
+      wxUpdated: S.wxAt ? 'Forecast updated ' + new Date(S.wxAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'No forecast loaded yet.'
     };
   }
 
@@ -1674,11 +2503,23 @@ save(patch, entry) {
       cloudDot: { on: '#5c7a58', busy: '#e67e22', err: '#a83e66', off: '#c3c8b8' }[S.cloud.status] || '#c3c8b8',
       cloudTitle: S.cloud.email ? 'Cloud backup · ' + S.cloud.email : 'Cloud backup',
       cloudSub: S.cloud.msg,
+      buildId: this.BUILD,
       cloudPush: () => this.cloudPushNow(false),
       cloudPull: () => this.cloudPull(false),
       cloudIn: () => this.cloudAuth('in'),
       cloudUp: () => this.cloudAuth('up'),
       cloudOut: () => this.cloudSignOut(),
+      cloudGoogle: () => this.cloudGoogleAuth(),
+      cloudKey: e => { if (e.key === 'Enter') this.cloudAuth('in'); },
+      useLocal: () => this.save({ localOnly: true }),
+      openLogin: () => this.save({ localOnly: false }),
+      showLogin: !!S.authReady && !S.cloud.email && !S.localOnly,
+      showApp: !(S.authReady && !S.cloud.email && !S.localOnly),
+      signInLabel: S.cloud.status === 'busy' && !S.cloud.email ? 'Signing in…' : 'Sign in',
+      hasLoginMsg: S.cloud.status === 'err' || (S.cloud.status === 'off' && /confirm|Signed out/.test(S.cloud.msg || '')),
+      loginMsg: /Invalid login credentials/.test(S.cloud.msg || '') ? 'That email and password don\'t match. If you normally sign in with Google, use Continue with Google below.' : S.cloud.msg,
+      loginMsgColor: S.cloud.status === 'err' ? '#a83e66' : '#5c7a58',
+      loginMsgBg: S.cloud.status === 'err' ? '#fbe9f0' : '#e8efe4',
       pushNow: async () => {
         const ok = this.pushCal(this.state);
         const cloud = await this.pushCalCloud(this.state);
@@ -1693,9 +2534,63 @@ save(patch, entry) {
   }
 
   // Print sheet layout lives in js/print.js — see that file to change the A4 sheets.
+  /* Paper content boxes in CSS px @96dpi, minus the 10mm @page margin on each side. */
+  PAPER_PX = { a4: [794, 1123], a3: [1123, 1587], letter: [816, 1056] };
+
+  /* Lay every print sheet out at the real paper box and zoom it down until it fits,
+     so nothing is ever clipped and the on-screen preview matches the printed page.
+     Same idea as the calendar app's --k type scale, measured instead of tabulated. */
+  fitSheets() {
+    const P = this.state.print || {};
+    const box = this.PAPER_PX[P.paper] || this.PAPER_PX.a4;
+    const land = P.orient === 'landscape';
+    const M = 38; // the 10mm @page margin, at 96dpi
+    const W = (land ? box[1] : box[0]) - M * 2;
+    const H = (land ? box[0] : box[1]) - M * 2;
+    const root = document.documentElement, S = root.style;
+    const sheets = [...document.querySelectorAll('.sk-page')];
+    if (!sheets.length) return;
+    // column not laid out yet (streaming / placeholder) — a zero width would scale the sheet to nothing
+    const parent = sheets[0].parentNode;
+    if (!parent || parent.clientWidth < 50) { clearTimeout(this._fitT); this._fitT = setTimeout(() => this.fitSheets(), 120); return; }
+    if (!this._fitRO && window.ResizeObserver) {
+      this._fitRO = new ResizeObserver(() => { if (this.state.screen === 'print') this.fitSheets(); });
+      this._fitRO.observe(parent);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => this.fitSheets());
+    }
+
+    // measure natural height at the paper's width, with zoom and preview scale neutral
+    S.setProperty('--sk-pw', W + 'px');
+    S.setProperty('--sk-k', '1');
+    S.setProperty('--sk-view', '1');
+    root.classList.add('sk-measure');
+    const nat = Math.max(...sheets.map(el => el.scrollHeight));
+    root.classList.remove('sk-measure');
+    if (nat < 50) { clearTimeout(this._fitT); this._fitT = setTimeout(() => this.fitSheets(), 120); return; }
+
+    const k = Math.min(1, H / Math.max(1, nat));
+    const avail = sheets[0].parentNode ? sheets[0].parentNode.clientWidth : W;
+    const view = Math.min(1, avail / W);
+    S.setProperty('--sk-ph', H + 'px');
+    S.setProperty('--sk-k', String(k));
+    S.setProperty('--sk-view', String(view));
+    // a scaled sheet still reserves its unscaled height — claw the difference back
+    S.setProperty('--sk-mb', (26 - H * (1 - view)) + 'px');
+    // transform-origin is top-left, so centre the scaled sheet by hand
+    S.setProperty('--sk-ml', Math.max(0, (avail - W * view) / 2) + 'px');
+  }
+
+  componentDidUpdate() {
+    if (this.state.screen !== 'print') return;
+    clearTimeout(this._fitT);
+    this._fitT = setTimeout(() => this.fitSheets(), 30);
+  }
+
   printVals(S) {
     if (typeof window.SUKKIRI_PRINT === 'function') return window.SUKKIRI_PRINT(this, S);
-    return { print: S.print || {}, printModes: [], printParts: [], weekDays: [], weekRows: [], checkinCells: [], weekGarbage: [], monthHead: [], monthCells: [],
+    return { print: S.print || {}, printModes: [], printParts: [], printPapers: [], printOrients: [], paperNote: '',
+      setPrintPaper: () => {}, setPrintOrient: () => {},
+      weekDays: [], weekRows: [], checkinCells: [], weekGarbage: [], monthHead: [], monthCells: [],
       showWeekSheet: false, showMonthSheet: false, printMissing: true,
       weekRangeLabel: '', monthLabel: '', printedOn: '',
       setPrintMode: () => {}, togglePrintPart: () => {}, doPrint: () => window.print() };
@@ -1732,8 +2627,8 @@ save(patch, entry) {
     const dayName = this.props.checkInDay ?? 'Saturday';
 
     const nav = [
-      ['today', 'Today'], ['checkin', 'Photo check-in'], ['reports', 'Reports'],
-      ['deep', 'Deep clean'], ['shop', 'Shopping'], ['supplies', 'Supplies'], ['garbage', 'Garbage'], ['log', 'Log'], ['print', 'Print']
+      ['cal', 'Calendar'], ['today', 'Today'], ['checkin', 'Photo check-in'], ['reports', 'Reports'],
+      ['deep', 'Deep clean'], ['shop', 'Shopping'], ['supplies', 'Supplies'], ['garbage', 'Garbage'], ['print', 'Print'], ['settings', 'Settings']
     ].map(([id, label]) => {
       const on = S.screen === id;
       return { id, label, bg: on ? '#e7eee4' : 'transparent', color: on ? '#3f5540' : '#7c8274', dot: on ? '#d95c8a' : '#d6dac9' };
@@ -1742,7 +2637,9 @@ save(patch, entry) {
     const ICON = {
       shirt: 'M9.5 3 C9.5 4.2 10.6 5 12 5 C13.4 5 14.5 4.2 14.5 3 H17 L21 6.5 L18.5 9.5 L17 8.3 V21 H7 V8.3 L5.5 9.5 L3 6.5 L7 3 Z',
       broom: 'M14.2 2.2 L16.8 4.8 L11.6 10 L9 7.4 Z M8 8.6 L12.4 13 C11 16.4 7.2 19.2 2.4 19.8 C4.6 15.6 5.2 11.8 8 8.6 Z',
-      drawer: 'M3 4 h18 v16 H3 Z M6.2 8 h11.6 v1.8 H6.2 Z M9 13.5 h6 v1.8 H9 Z',
+      /* folded-clothes stack. A wardrobe box is a rectangle, and at 14px no interior
+       detail survives — so the three tiers step in and out to shape the silhouette. */
+    drawer: 'M5 4.4h14v4.2H5z M2.8 10.4h18.4v4.2H2.8z M6.4 16.4h11.2v4.2H6.4z',
       sparkle: 'M12 2 L14.2 9.8 L22 12 L14.2 14.2 L12 22 L9.8 14.2 L2 12 L9.8 9.8 Z',
       check: 'M12 2 a10 10 0 1 0 0 20 a10 10 0 0 0 0 -20 Z M10.6 15.4 L7.2 12 l1.4 -1.4 2 2 4.8 -4.8 1.4 1.4 Z',
       camera: 'M9 4 h6 l1.6 2.5 H20 a2 2 0 0 1 2 2 V18 a2 2 0 0 1 -2 2 H4 a2 2 0 0 1 -2 -2 V8.5 a2 2 0 0 1 2 -2 h3.4 Z M12 9 a4.2 4.2 0 1 0 0 8.4 a4.2 4.2 0 0 0 0 -8.4 Z',
@@ -1763,7 +2660,28 @@ save(patch, entry) {
       else if (days === 0) { dueLabel = 'Due today'; chipBg = '#f7edd8'; chipColor = '#9a6c1c'; }
       else { dueLabel = `Due in ${days}d`; chipBg = '#e7eee4'; chipColor = '#5c7a58'; }
       const sug = this.minsFor(c.name);
+      /* Drying-dependent cycles carry the weather verdict for their due day, plus the
+         better day to move to — futons demand real sun, laundry only dry air. */
+      const need = this.dryNeed(c);
+      const dd = need ? this.wxDay(this.dkey(due)) : null;
+      const dry = dd && dd.dry;
+      let dryFlag = '', dryFix = '';
+      if (need && dry) {
+        const bad = need === 'sun' ? !dry.futon : dry.verdict === 'bad';
+        const WXg = this.wxApi();
+        if (bad) {
+          const alt = WXg && !WXg.stale && S.wx ? WXg.bestDay(S.wx, 7, need === 'sun') : null;
+          dryFlag = need === 'sun' ? `☔ ${dd.icon} no real sun that day` : `☔ ${dd.icon} poor drying (${dry.out}/100)`;
+          dryFix = alt && alt.key !== this.dkey(due)
+            ? `Better on ${new Date(alt.key + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long' })} — ${alt.v}/100`
+            : (need === 'sun' ? 'No sunny day this week' : 'Dry it indoors');
+        } else if (dry.verdict === 'good') {
+          dryFlag = `${dd.icon} good drying (${dry.out}/100)`;
+        }
+      }
       return { id: c.id, name: c.name, sub: `Every ${c.days} days · last done ${this.fmtDate(c.last)}`,
+        dryFlag, dryFix, hasDry: !!dryFlag,
+        dryBg: dryFix ? '#fbe9f0' : '#e6f2e7', dryColor: dryFix ? '#a83e66' : '#2f7d4f',
         picking: S.timerPick === c.id,
         pickOpts: [10, 15, 20, 25, 30, 45, 60, 90].map(mn => ({
           mins: String(mn), label: mn === sug ? mn + 'm ·' : mn + 'm',
@@ -1829,14 +2747,25 @@ save(patch, entry) {
       };
     });
 
-    const shopView = S.shop.map(it => ({
-      id: it.id, name: it.name, priceLabel: '¥' + (it.price || 0).toLocaleString(),
-      link: it.link, hasLink: !!it.link, suggested: !!it.suggested,
-      mark: it.bought ? '✓' : '', opacity: it.bought ? '0.55' : '1',
-      circleBorder: it.bought ? '#5c7a58' : '#cfd4c2', circleBg: it.bought ? '#5c7a58' : 'transparent',
-      deco: it.bought ? 'line-through' : 'none'
-    }));
+    const shopView = S.shop.map(it => {
+      const st = this.reqStatusOf(it), open = this.reqOpen(it);
+      const stLabel = { pending: 'requested · pending', approved: 'approved', logged: 'logged by cost app', rejected: 'rejected — send again?', sending: 'sending…', queued: 'queued offline', error: 'not sent — retry', local: 'not sent — sign in' }[st] || '';
+      const tone = { approved: 'ok', logged: 'ok', rejected: 'bad', error: 'bad', pending: 'wait', sending: 'wait', queued: 'wait', local: 'wait' }[st] || 'mute';
+      return {
+        id: it.id, name: it.name, priceLabel: '¥' + (it.price || 0).toLocaleString(),
+        link: it.link, hasLink: !!it.link, suggested: !!it.suggested, isAuto: !!it.autoReq,
+        mark: it.bought ? '✓' : '', opacity: it.bought ? '0.55' : '1',
+        circleBorder: it.bought ? '#5c7a58' : '#cfd4c2', circleBg: it.bought ? '#5c7a58' : 'transparent',
+        deco: it.bought ? 'line-through' : 'none',
+        canSel: !it.bought && !open, selMark: it.sel ? '✓' : '', selBorder: it.sel ? '#d95c8a' : '#cfd4c2', selBg: it.sel ? '#d95c8a' : '#fff',
+        hasSt: !!stLabel && !it.bought, stLabel,
+        stColor: { ok: '#5c7a58', bad: '#a83e66', wait: '#b3641c', mute: '#7c8274' }[tone],
+        stBg: { ok: '#e8efe4', bad: '#fbe9f0', wait: '#fdf1e4', mute: '#eef0e8' }[tone]
+      };
+    });
     const pending = S.shop.filter(i => !i.bought).reduce((s, i) => s + (i.price || 0), 0);
+    const selOpen = S.shop.filter(i => !i.bought && i.sel && !this.reqOpen(i));
+    const selCount = selOpen.length, selYen = selOpen.reduce((a, i) => a + (i.price || 0), 0);
 
     return {
       navItems: nav,
@@ -1845,10 +2774,11 @@ save(patch, entry) {
       points: String(S.points), streak: String(S.streak),
       isToday: S.screen === 'today', isCheckin: S.screen === 'checkin', isReports: S.screen === 'reports',
       isDeep: S.screen === 'deep', isShop: S.screen === 'shop',
-      isSupplies: S.screen === 'supplies', isLog: S.screen === 'log', isPrint: S.screen === 'print',
+      isSupplies: S.screen === 'supplies', isPrint: S.screen === 'print',
       isGarbage: S.screen === 'garbage',
       ...this.suppliesVals(S, now), ...this.logVals(S), ...this.printVals(S), ...this.garbageVals(S),
       ...this.timerVals(S), ...this.riskVals(S), ...this.gridVals(S),
+      ...this.calVals(S), ...this.settingsVals(S),
       todayLabel: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
       coachMsg, todayTasks: tasks,
       ...(() => {
@@ -1953,6 +2883,21 @@ save(patch, entry) {
       },
       removePoolTask: e => { const i = parseInt(e.currentTarget.dataset.idx, 10); this.save({ pool: S.pool.filter((_, j) => j !== i) }); },
       shopView,
+      costReqView: (S.costReqs || []).slice(0, 6).map(r => {
+        const st = r.sent === 'hub' ? (r.status || 'pending') : r.sent;
+        const label = { error: 'not sent · ' + (r.code || 'error'), queued: 'queued offline', local: 'not sent — sign in', sending: 'sending…' }[st] || st;
+        const tone = { approved: 'ok', logged: 'ok', rejected: 'bad', error: 'bad', pending: 'wait', queued: 'wait', sending: 'wait' }[st] || 'mute';
+        return { key: r.key, id: r.id, label,
+          summary: `${r.auto ? '🔁 ' : ''}${r.count || 0} item${r.count === 1 ? '' : 's'} · ¥${(r.totalYen || 0).toLocaleString()} — ${(r.items || []).map(i => i.name).join(', ')}`,
+          when: r.requestedAt ? this.fmtDate(Date.parse(r.requestedAt)) : '',
+          hasErr: r.sent === 'error' && !!r.msg, msg: r.msg || '',
+          color: { ok: '#5c7a58', bad: '#a83e66', wait: '#b3641c', mute: '#7c8274' }[tone],
+          bg: { ok: '#e8efe4', bad: '#fbe9f0', wait: '#fdf1e4', mute: '#eef0e8' }[tone] };
+      }),
+      hasCostReqs: (S.costReqs || []).length > 0,
+      sendLabel: selCount ? `Send ${selCount} selected · ¥${selYen.toLocaleString()}` : 'Send selected to cost app',
+      sendBg: selCount ? '#d95c8a' : '#e9c9d6', sendBorder: selCount ? '#d95c8a' : '#e9c9d6',
+      hasSelectable: S.shop.some(i => !i.bought && !this.reqOpen(i)),
       toggleBought: e => { const id = e.currentTarget.dataset.id; this.save({ shop: S.shop.map(i => i.id === id ? { ...i, bought: !i.bought, boughtAt: !i.bought ? Date.now() : null } : i) }); },
       budgetVal: String(S.budget ?? 5000),
       onBudget: e => this.save({ budget: Math.max(0, parseInt(e.currentTarget.value, 10) || 0) }),
@@ -1973,18 +2918,12 @@ save(patch, entry) {
         return (S.budget ?? 5000) - spent >= 0 ? '#5c7a58' : '#a83e66';
       })(),
       sendToCostApp: () => {
-        const items = S.shop.filter(i => !i.bought).map(i => ({ name: i.name, priceYen: i.price || 0, link: i.link || '', reason: i.suggested ? 'Suggested by Sukkiri room inspection' : 'Cleaning supply', category: 'Room cleaning' }));
-        if (!items.length) { this.save({ notice: 'Nothing pending to request — the list is clear!' }); return; }
-        const req = { source: 'sukkiri', type: 'purchase_request', status: 'pending', id: this.uid('req'), requestedAt: new Date().toISOString(), currency: 'JPY', totalYen: items.reduce((s, i) => s + i.priceYen, 0), items };
-        try {
-          const q = JSON.parse(localStorage.getItem('sukkiri_cost_requests') || '[]');
-          q.push(req);
-          localStorage.setItem('sukkiri_cost_requests', JSON.stringify(q));
-        } catch (e) {}
-        const txt = JSON.stringify(req, null, 2);
-        const done = () => this.save({ notice: `Request sent — ${items.length} item${items.length > 1 ? 's' : ''} (¥${req.totalYen.toLocaleString()}) queued for the cost app and copied to your clipboard.` }, { kind: 'shop', text: `Sent purchase request to cost app — ${items.length} items, ¥${req.totalYen.toLocaleString()}` });
-        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, done); else done();
+        const sel = S.shop.filter(i => !i.bought && i.sel && !this.reqOpen(i));
+        if (!sel.length) { this.save({ notice: 'Tick the items you want to request first.' }); return; }
+        this.sendItems(sel, 'manual');
       },
+      toggleSel: e => { const id = e.currentTarget.dataset.id; this.save({ shop: S.shop.map(i => i.id === id ? { ...i, sel: !i.sel } : i) }); },
+      selectAllOpen: () => { const any = S.shop.some(i => !i.bought && !this.reqOpen(i) && !i.sel); this.save({ shop: S.shop.map(i => !i.bought && !this.reqOpen(i) ? { ...i, sel: any } : i) }); },
       deleteShopItem: e => { const id = e.currentTarget.dataset.id; this.save({ shop: S.shop.filter(i => i.id !== id) }); },
       addShopItem: () => {
         const name = S.form.shopName.trim(); if (!name) return;
