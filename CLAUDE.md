@@ -22,6 +22,15 @@ The calendar app **already has a Sukkiri module**: `Calender_app/js/sukkiri.js`.
 **Legacy (delete once the hub round trip works):** the `sukkiri_cost_requests` localStorage push + clipboard JSON below.
 Sukkiri sends purchase requests via localStorage key `sukkiri_cost_requests` (array of `{source, type, status, id, requestedAt, currency:"JPY", totalYen, items:[{name, priceYen, link, reason, category}]}`). The cost app gets a "Sukkiri Requests" inbox section with approve/reject writing `status` back in place. Prompt for building it: `Cost App Prompt.md`. **No CSV export** — in-app section only.
 
+## Phase 0 behaviours (R018)
+- `save()` surfaces a `localStorage` quota failure as the `saveErr` banner (role=alert) instead of swallowing it; clears on the next successful save.
+- Deleted seed cycles go into `removedIds[]`; `load()` and `applyDataFile()` never re-add those ids.
+- Missed check-in penalty only runs when `inspectAvailable()` (host `window.claude.complete`) **and** at least one ideal photo exists; otherwise `penalized` is just moved forward so later photos don't back-charge. Penalty stamps `lastPenalty`.
+- `notice` auto-clears after 6 s and on tab change (`goNav`).
+- Health = 100 − 18/overdue − risk flags (missed 10, clash/stack 6, slipping 3) − 12 if no check-in in 7 d − 10 if `lastPenalty` within 7 d, averaged with the latest report. Hero title "sukkiri" only at ≥ 90.
+- Garbage reminder drops the "this morning" line after 08:30 and rolls to tomorrow's; button is "All collection days".
+- `index.html` is a forwarder to `Sukkiri.dc.html` (keeps query + hash); edit only `Sukkiri.dc.html`.
+
 ## File layout
 - `Sukkiri.dc.html` — app (template + logic; styles are inline by design, no stylesheet to extract)
 - `js/data.js` — editable seed data: cycles, supplies, garbage categories, station rules, ward. Loaded as a classic script from `<helmet>`. `applyDataFile()` (componentDidMount, polls for the global) adopts only items whose `id` is not already in state, so live history is never rewritten; `garbageRules` + `ward` always refresh.
