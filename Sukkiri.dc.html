@@ -431,7 +431,7 @@ html.sk-measure .sk-page { height: auto !important; }
           <div style="display:flex; flex-wrap:wrap; gap:10px;">
             <sc-for list="{{ themeOpts }}" as="th" hint-placeholder-count="2">
               <div onClick="{{ setTheme }}" data-id="{{ th.id }}" style="cursor:pointer; display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:var(--r-panel); border:2px solid {{ th.border }}; background:{{ th.bg }}; min-width:200px;">
-                <span style="display:flex; gap:3px;"><span style="width:14px; height:14px; border-radius:50%; background:{{ th.sw1 }};"></span><span style="width:14px; height:14px; border-radius:50%; background:{{ th.sw2 }};"></span><span style="width:14px; height:14px; border-radius:50%; background:{{ th.sw3 }};"></span></span>
+                <span style="display:flex; gap:3px;"><span style="width:14px; height:14px; border-radius:50%; background:{{ th.sw1 }}; box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--txt) 18%,transparent);"></span><span style="width:14px; height:14px; border-radius:50%; background:{{ th.sw2 }}; box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--txt) 18%,transparent);"></span><span style="width:14px; height:14px; border-radius:50%; background:{{ th.sw3 }}; box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--txt) 18%,transparent);"></span></span>
                 <span><span style="display:block; font-weight:800; font-size:var(--fs-stats); color:var(--txt);">{{ th.label }}</span><span style="display:block; font-size:var(--fs-hint); color:var(--txt2); font-weight:600;">{{ th.sub }}</span></span>
               </div>
             </sc-for>
