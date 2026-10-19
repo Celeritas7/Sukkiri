@@ -12,8 +12,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/akatsuki-client.js"></script>
-<script src="js/adapters/sukkiri-adapter.js"></script>
+<script src="js/akatsuki-client.js?v=s4b2"></script>
+<script src="js/adapters/sukkiri-adapter.js?v=s4b2"></script>
 <script src="js/data.js"></script>
 <script src="js/print.js"></script>
 <script src="js/weather.js"></script>
@@ -1280,6 +1280,7 @@ class Component extends DCLogic {
         const missing = seed.cycles.filter(c => !have.has(c.name.toLowerCase()));
         if (missing.length) { s.cycles = [...(s.cycles || []), ...missing]; this._migrated = true; }
         if (!saved.supplies) s.supplies = seed.supplies;
+        if (!saved.costReset1) { Object.assign(s, this.freshCost(s)); this._migrated = true; }
         if (!saved.wkMigrated) { s.cycles = (s.cycles || []).map(c => ({ ...c, wk: c.wk === undefined ? true : c.wk })); s.wkMigrated = true; }
         if (s.screen === 'log') s.screen = 'settings';
         if (!saved.garbageSaitama) { s.garbage = seed.garbage; s.garbageRules = seed.garbageRules; s.garbageSaitama = true; }
@@ -1308,7 +1309,7 @@ save(patch, entry) {
 
   // ---------- Supabase cloud sync (sukkiri_state) ----------
   SB_URL = 'https://wylxvmkcrexwfpjpbhyy.supabase.co';
-  BUILD = 'sk-20260925-r017';
+  BUILD = 'sk-20261001-s4b2';
   akLog(...a) { try { if (localStorage.getItem('akatsuki_debug') === '1') console.log('[ak]', ...a); } catch (e) {} }
   SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5bHh2bWtjcmV4d2ZwanBiaHl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2MzkxMDYsImV4cCI6MjA4NDIxNTEwNn0.6Bxo42hx4jwlJGWnfjiTpiDUsYfc1QLTN3YtrU1efak';
 
@@ -1323,7 +1324,7 @@ save(patch, entry) {
     for (let i = 0; i < 20 && !window.SukkiriHub; i++) await new Promise(r => setTimeout(r, 150));
     this.skHub = window.SukkiriHub ? window.SukkiriHub(this.sb, { log: (...a) => this.akLog(...a) }) : null;
     window.sukkiri = Object.assign(window.sukkiri || {}, { supabase: this.sb, hub: this.skHub, build: this.BUILD });
-    this.akLog('sukkiri build ' + this.BUILD, this.skHub ? 'hub ready' : 'hub scripts missing');
+    console.info('[ak] sukkiri build ' + this.BUILD, this.skHub ? 'hub ready' : 'hub scripts missing', '· syncCycles has wk:', !!(this.skHub && /wk/.test(this.skHub.syncCycles.toString())));
     if (!this.skHub) console.warn('[ak] sukkiri-adapter.js / akatsuki-client.js not loaded — purchase requests stay local');
     try {
       const { data } = await this.sb.auth.getSession();
@@ -1359,7 +1360,13 @@ save(patch, entry) {
     const { error } = await this.sb.from('sukkiri_state').upsert(
       { user_id: this.uidCloud, payload: this.payload(), updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
     if (error) this.cloudState('err', 'Backup failed: ' + error.message);
-    else { this.pushCalCloud(this.state); this.cloudState('on', 'Backed up ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })); if (!quiet) this.save({ notice: 'Backed up to your account.' }); }
+    else { this.syncCal(this.state); this.cloudState('on', 'Backed up ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })); if (!quiet) this.save({ notice: 'Backed up to your account.' }); }
+  }
+
+  /* One-time wipe of the cost-request history (Sep 30): records + per-item request badges. */
+  freshCost(s) {
+    return { costReqs: [], costReset1: true,
+      shop: (s.shop || []).map(i => { const { reqKey, sel, ...rest } = i; return rest; }) };
   }
 
   async cloudPull(auto) {
@@ -1373,6 +1380,7 @@ save(patch, entry) {
     const keep = (this.state.areas || []).reduce((m, a) => { m[a.id] = a; return m; }, {});
     const merged = { ...p, areas: (p.areas || []).map(a => keep[a.id] ? { ...a, ideal: keep[a.id].ideal, current: keep[a.id].current } : a) };
     delete merged.cloud;
+    if (!p.costReset1) Object.assign(merged, this.freshCost(merged));
     this.save(merged, { kind: 'change', text: 'Restored data from your account' });
     this.cloudState('on', 'Restored from ' + new Date(p.savedAt || Date.now()).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }));
   }
@@ -1538,7 +1546,7 @@ save(patch, entry) {
     p.skNotes = mineN;
     const keep = (p.cycles || []).filter(c => c.kind === 'digital');
     p.cycles = keep.concat((st.cycles || []).map((c, i) => ({
-      id: 'sk_' + c.id, name: c.name, every: c.days, kind: 'home',
+      id: 'sk_' + c.id, name: c.name, every: c.days, kind: 'home', wk: !!c.wk,
       anchor: this.dkey(this.dueAt(c).getTime()), color: c.color || this.CAL_COL[(i + 4) % this.CAL_COL.length]
     })));
     return p;
@@ -1553,33 +1561,45 @@ save(patch, entry) {
     } catch (e) { return false; }
   }
 
-  /* Cross-origin / cross-device bridge: the calendar reads calendar_app_sukkiri on load,
-     so write the merged payload straight into that table. */
-  async pushCalCloud(st) {
-    if (!this.sb || !this.uidCloud) return false;
+  /* Step 4 Phase B: publish Sukkiri's owned rows (cycles, garbage) through the hub.
+     Skipped entirely when nothing schedulable changed since the last good sync, so a
+     no-op save writes nothing. Deleted cycles go out as explicit hub.remove. */
+  async syncCal(st, force) {
+    if (!this.skHub || !this.uidCloud) return false;
+    const sig = JSON.stringify([(st.cycles || []).map(c => [c.id, c.name, c.days, !!c.wk, c.color, this.dkey(this.dueAt(c).getTime())]), st.garbage || []]);
+    if (!force && sig === this._calSig) return true;
+    const o = { force: !!force };
     try {
-      const { data } = await this.sb.from('calendar_app_sukkiri').select('payload').eq('user_id', this.uidCloud).maybeSingle();
-      const p = this.calPayload(st, Object.assign({}, (data && data.payload) || {}));
-      const { error } = await this.sb.from('calendar_app_sukkiri')
-        .upsert({ user_id: this.uidCloud, payload: p, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
-      if (error) return false;
-      try { localStorage.setItem('calapp_sukkiri', JSON.stringify(p)); } catch (e) {}
+      const nc = await this.skHub.syncCycles(st.cycles || [], c => this.dkey(this.dueAt(c).getTime()), this.CAL_COL, o);
+      const ng = await this.skHub.syncGarbage(st.garbage || [], o);
+      this._calSig = sig; this._calErr = null;
+      window.sukkiri = Object.assign(window.sukkiri || {}, { calSync: { at: new Date().toISOString(), force: !!force, cycles: nc, garbage: ng } });
+      (force ? console.info : this.akLog.bind(this))('[ak] syncCal' + (force ? ' (forced)' : '') + ' wrote', nc, 'cycle rows,', ng, 'garbage rows · ' + this.BUILD);
       return true;
-    } catch (e) { return false; }
+    } catch (e) {
+      this._calErr = ((e && e.code) ? e.code + ' ' : '') + ((e && e.message) || 'unknown error');
+      window.sukkiri = Object.assign(window.sukkiri || {}, { calSync: { at: new Date().toISOString(), force: !!force, err: this._calErr } });
+      console.warn('[ak] syncCal failed', this._calErr);
+      return false;
+    }
   }
 
   /* Pull the calendar-owned half back (away days, skips) so the risk radar sees them
      even when Sukkiri runs on its own port. */
+  /* Step 4 Phase A: read through the hub — only paths Calendar owns. Empty or failed
+     read = keep what we have (an empty read says nothing). Never republished. */
   async pullCalAway() {
-    if (!this.sb || !this.uidCloud) return;
+    if (!this.skHub || !this.uidCloud) return;
+    let cal;
+    try { cal = await this.skHub.pullCalendar(); }
+    catch (e) { this.akLog('pullCalendar failed — keeping local', e && e.message); return; }
+    const got = Object.keys(cal || {});
+    if (!this._calPulledOnce) { this._calPulledOnce = true; this.akLog('pullCalendar first load:', got.length ? got.join(',') : '(empty)', '· away', 'away' in cal ? 'yes' : 'no', '· done', 'done' in cal ? 'yes' : 'no'); }
+    window.sukkiri = Object.assign(window.sukkiri || {}, { calPull: got });
+    if (!got.length) return;
     try {
-      const { data } = await this.sb.from('calendar_app_sukkiri').select('payload').eq('user_id', this.uidCloud).maybeSingle();
-      const r = data && data.payload; if (!r) return;
       const local = JSON.parse(localStorage.getItem('calapp_sukkiri') || '{}');
-      local.away = r.away || [];
-      local.overrides = r.overrides || {};
-      local.done = r.done || {};
-      local.block = r.block || local.block;
+      for (const k of got) local[k] = cal[k];
       localStorage.setItem('calapp_sukkiri', JSON.stringify(local));
       this.forceUpdate();
     } catch (e) {}
@@ -2522,12 +2542,13 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       loginMsgBg: S.cloud.status === 'err' ? '#fbe9f0' : '#e8efe4',
       pushNow: async () => {
         const ok = this.pushCal(this.state);
-        const cloud = await this.pushCalCloud(this.state);
+        const cloud = await this.syncCal(this.state, true);
         await this.pullCalAway();
         this.save({ lastPush: Date.now(), notice: cloud
           ? `${this.state.cycles.length} cycles sent to the calendar's account — they'll show on every device.`
+          : (this.uidCloud && this._calErr) ? `Couldn't reach the hub — ${this._calErr}. Saved on this device only.`
           : ok ? `${this.state.cycles.length} cycles pushed to the calendar on this device. Sign in to reach your other devices.`
-               : 'Push failed — storage unavailable.' }, { kind: 'change', text: cloud ? 'Cycles pushed to the calendar account' : 'Cycles pushed to the calendar (this device)' });
+               : 'Push failed — storage unavailable.' }, { kind: 'change', text: cloud ? 'Cycles pushed to the calendar account' : (this.uidCloud && this._calErr) ? 'Hub push failed — kept on this device' : 'Cycles pushed to the calendar (this device)' });
       },
       pushNowLocal: () => { const ok = this.pushCal(this.state); this.save({ lastPush: Date.now(), notice: ok ? `${this.state.cycles.length} cycles pushed to the calendar.` : 'Push failed — storage unavailable.' }, { kind: 'change', text: `Pushed ${this.state.cycles.length} cycles to calendar` }); }
     };
