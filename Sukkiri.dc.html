@@ -164,8 +164,14 @@ html.sk-measure .sk-page { height: auto !important; }
   <div class="sk-main" style="max-width:960px; margin:0 auto; padding:26px 20px 60px;">
     <input type="file" accept="image/*" ref="{{ fileRef }}" onChange="{{ onFileChosen }}" style="display:none;">
 
+    <sc-if value="{{ hasSaveErr }}" hint-placeholder-val="{{ false }}">
+      <div data-noprint="1" role="alert" style="display:flex; align-items:center; gap:12px; background:#fdf1e4; border:1.5px solid #e0a83a; border-radius:14px; padding:12px 16px; margin-bottom:20px;">
+        <div style="font-size:20px;">⚠️</div>
+        <div style="flex:1; font-size:14px; font-weight:700; color:#9a6c1c;">{{ saveErrText }}</div>
+      </div>
+    </sc-if>
     <sc-if value="{{ hasNotice }}" hint-placeholder-val="{{ false }}">
-      <div data-noprint="1" style="display:flex; align-items:center; gap:12px; background:#fbe9f0; border:1px solid #f2cdda; border-radius:14px; padding:12px 16px; margin-bottom:20px;">
+      <div data-noprint="1" role="status" style="display:flex; align-items:center; gap:12px; background:#fbe9f0; border:1px solid #f2cdda; border-radius:14px; padding:12px 16px; margin-bottom:20px;">
         <div style="flex:1; font-size:14px; font-weight:700; color:#a83e66;">{{ noticeText }}</div>
         <div onClick="{{ dismissNotice }}" style="cursor:pointer; color:#c98aa4; font-weight:800; padding:2px 8px;" style-hover="color:#a83e66;">✕</div>
       </div>
@@ -512,7 +518,7 @@ html.sk-measure .sk-page { height: auto !important; }
               <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:16px; color:{{ garbReminderColor }};">{{ garbReminderJp }}</div>
               <div style="font-size:13.5px; color:#7c8274; font-weight:600;">{{ garbReminder }}</div>
             </div>
-            <div onClick="{{ goNav }}" data-id="garbage" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 14px; border-radius:999px; border:1.5px solid {{ garbReminderColor }}; color:{{ garbReminderColor }}; white-space:nowrap;">Schedule</div>
+            <div onClick="{{ goNav }}" data-id="garbage" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 14px; border-radius:999px; border:1.5px solid {{ garbReminderColor }}; color:{{ garbReminderColor }}; white-space:nowrap;">All collection days</div>
           </div>
         </sc-if>
 
@@ -639,7 +645,7 @@ html.sk-measure .sk-page { height: auto !important; }
         <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:20px; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:16px 18px;">
           <div style="flex:1; min-width:180px;">
             <div style="font-weight:800; font-size:15px; color:#3b4038;">{{ readyLabel }}</div>
-            <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">Claude compares each pair and writes your cleaning instructions.</div>
+            <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">{{ inspectHint }}</div>
           </div>
           <sc-if value="{{ inspecting }}" hint-placeholder-val="{{ false }}">
             <div style="display:flex; align-items:center; gap:10px; color:#d95c8a; font-weight:800; font-size:14px;">
@@ -1276,8 +1282,10 @@ class Component extends DCLogic {
         const saved = JSON.parse(raw);
         const s = Object.assign({}, seed, saved, { inspecting: false, inspectError: '', cloud: seed.cloud, authReady: false });
         s.form = Object.assign({}, seed.form, saved.form || {});
+        // Seed cycles the user deleted stay deleted: removedIds is the tombstone list.
+        const gone = new Set(s.removedIds || []);
         const have = new Set((s.cycles || []).map(c => (c.name || '').toLowerCase()));
-        const missing = seed.cycles.filter(c => !have.has(c.name.toLowerCase()));
+        const missing = seed.cycles.filter(c => !have.has(c.name.toLowerCase()) && !gone.has(c.id));
         if (missing.length) { s.cycles = [...(s.cycles || []), ...missing]; this._migrated = true; }
         if (!saved.supplies) s.supplies = seed.supplies;
         if (!saved.wkMigrated) { s.cycles = (s.cycles || []).map(c => ({ ...c, wk: c.wk === undefined ? true : c.wk })); s.wkMigrated = true; }
@@ -1293,14 +1301,25 @@ class Component extends DCLogic {
   }
 
 save(patch, entry) {
+    // A notice is feedback for the action just taken: it fades on its own instead of
+    // following the user from tab to tab until dismissed.
+    if (patch.notice) {
+      clearTimeout(this._noticeT);
+      this._noticeT = setTimeout(() => { if (this.state.notice === patch.notice) this.setState({ notice: '' }); }, 6000);
+    }
     this.setState(prev => {
       const next = { ...patch };
       if (entry) next.log = [{ ts: Date.now(), kind: entry.kind || 'info', text: entry.text }, ...(prev.log || [])].slice(0, 400);
       return next;
     }, () => {
       const s = { ...this.state, inspecting: false, inspectError: '', savedAt: Date.now() };
-      delete s.cloud; delete s.authReady;
-      try { localStorage.setItem(this.KEY, JSON.stringify(s)); } catch (e) {}
+      delete s.cloud; delete s.authReady; delete s.saveErr;
+      // A full localStorage (photos are stored inline) used to fail silently here and every
+      // later change was lost on reload. Surface it instead, and clear it once a save lands.
+      let ok = true;
+      try { localStorage.setItem(this.KEY, JSON.stringify(s)); } catch (e) { ok = false; }
+      if (!ok && !this.state.saveErr) this.setState({ saveErr: 'This browser is out of storage, so your changes are not being saved. Clear some photos (or sign in to back up), then try again.' });
+      else if (ok && this.state.saveErr) this.setState({ saveErr: '' });
       this.pushCal(s);
       this.queueCloud();
     });
@@ -1308,7 +1327,7 @@ save(patch, entry) {
 
   // ---------- Supabase cloud sync (sukkiri_state) ----------
   SB_URL = 'https://wylxvmkcrexwfpjpbhyy.supabase.co';
-  BUILD = 'sk-20260925-r017';
+  BUILD = 'sk-20261019-r018';
   akLog(...a) { try { if (localStorage.getItem('akatsuki_debug') === '1') console.log('[ak]', ...a); } catch (e) {} }
   SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5bHh2bWtjcmV4d2ZwanBiaHl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2MzkxMDYsImV4cCI6MjA4NDIxNTEwNn0.6Bxo42hx4jwlJGWnfjiTpiDUsYfc1QLTN3YtrU1efak';
 
@@ -1645,19 +1664,24 @@ save(patch, entry) {
     const strict = this.props.strictMode ?? false;
     const pen = strict ? 30 : 15;
     const dow = (this.props.checkInDay ?? 'Saturday') === 'Sunday' ? 0 : 6;
+    // A check-in can only be missed once it is possible: at least one ideal photo exists and
+    // the inspector is reachable. Otherwise every Saturday would cost 15 points for nothing.
+    const canCheckIn = this.inspectAvailable() && (s.areas || []).some(a => a.ideal);
     const from = Math.max(s.penalized || 0, s.lastCheck || 0, s.installed || 0);
     const today = new Date(); today.setHours(0, 0, 0, 0);
     let d = new Date(from + D); d.setHours(0, 0, 0, 0);
     let missed = 0;
-    while (d.getTime() < today.getTime() && missed < 52) {
+    while (canCheckIn && d.getTime() < today.getTime() && missed < 52) {
       if (d.getDay() === dow && d.getTime() > from) missed++;
       d = new Date(d.getTime() + D);
     }
+    // Nothing to miss yet: keep the window moving so photos added later don't back-charge old weeks.
+    if (!canCheckIn && from < today.getTime() - D) this.save({ penalized: Date.now() });
     if (missed > 0) {
       const msg = strict
         ? `${missed} check-in${missed > 1 ? 's' : ''} skipped. −${missed * pen} points and streak reset. No excuses this week.`
         : `You missed ${missed} photo check-in${missed > 1 ? 's' : ''} (−${missed * pen} points). Fresh week, fresh start — you've got this!`;
-      this.save({ points: Math.max(0, s.points - missed * pen), streak: 0, penalized: Date.now(), notice: msg },
+      this.save({ points: Math.max(0, s.points - missed * pen), streak: 0, penalized: Date.now(), lastPenalty: Date.now(), notice: msg },
         { kind: 'penalty', text: `Missed ${missed} check-in${missed > 1 ? 's' : ''} — ${missed * pen} points lost, streak reset` });
     }
     if (this._migrated) { this._migrated = false; this.save({}, { kind: 'change', text: `Seeded ${this.state.cycles.length} cleaning & maintenance cycles` }); }
@@ -1818,7 +1842,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       const g = byDay[k]; if (g.length < 3) return;
       const d = new Date(k + 'T00:00:00'), days = Math.round((d.getTime() - today.getTime()) / D);
       if (days < 0 || days > 21) return;
-      raw.push({ id: g[0].id, sev: 'stack', name: `${g.length} phases land on ${this.fmtDate(d.getTime())}`, why: g.map(c => c.name).join(' · ') + ' — one of them will slip', act: 'Pull ' + g[0].name + ' earlier', actKind: 'pull', order: 200 + days });
+      raw.push({ id: g[0].id, sev: 'stack', name: `${g.length} cycles land on ${this.fmtDate(d.getTime())}`, why: g.map(c => c.name).join(' · ') + ' — one of them will slip', act: 'Pull ' + g[0].name + ' earlier', actKind: 'pull', order: 200 + days });
     });
     const items = raw
       .filter(r => !((ack[r.id + '|' + r.sev] || 0) > Date.now() - 6 * D))
@@ -1827,7 +1851,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
     const late = items.filter(i => i.sev === 'late').length;
     return {
       riskItems: items, hasRisk: items.length > 0,
-      riskTitle: late ? `${late} phase${late > 1 ? 's' : ''} already missed` : `${items.length} phase${items.length > 1 ? 's' : ''} at risk`,
+      riskTitle: late ? `${late} cycle${late > 1 ? 's' : ''} already missed` : `${items.length} cycle${items.length > 1 ? 's' : ''} at risk`,
       riskSub: late ? 'Clear these first — everything behind them shifts.' : 'Nothing missed yet. Adjust now and it stays that way.',
       riskAct: e => {
         const ds = e.currentTarget.dataset, c = cycles.find(x => x.id === ds.id); if (!c) return;
@@ -1956,7 +1980,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
     return {
       timerView: view, hasTimers: view.length > 0,
       timerPresets: presets,
-      timerSync: cloudOn ? 'Synced to your account — start it on the iPad, watch it finish on your phone.' : 'Sign in on the Log tab and timers follow you between devices.',
+      timerSync: cloudOn ? 'Synced to your account — start it on the iPad, watch it finish on your phone.' : 'Sign in under Settings → Account & sync and timers follow you between devices.',
       timerSyncColor: cloudOn ? '#5c7a58' : '#c98aa4',
       startPreset: e => { const ds = e.currentTarget.dataset; this.startTimer(ds.label, parseInt(ds.mins, 10), ''); },
       startCustom: () => {
@@ -2093,9 +2117,16 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
   }
 
   // ---------- inspection ----------
+  /* The photo inspector is the host's window.claude.complete; outside claude.ai it does not exist. */
+  inspectAvailable() { return !!(window.claude && typeof window.claude.complete === 'function'); }
+
   async inspect() {
     const pairs = this.state.areas.filter(a => a.ideal && a.current);
     if (!pairs.length || this.state.inspecting) return;
+    if (!this.inspectAvailable()) {
+      this.setState({ inspectError: 'Photo inspection only runs when Sukkiri is opened inside claude.ai. Your photos are kept — open the app there to run the check-in.' });
+      return;
+    }
     this.setState({ inspecting: true, inspectError: '' });
     const strict = this.props.strictMode ?? false;
     const tone = strict ? 'a strict, no-nonsense inspector' : 'a warm, encouraging cleaning coach';
@@ -2430,13 +2461,15 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
     const cats = S.garbage || [];
     const upd = (id, fn, entry) => this.save({ garbage: cats.map(g => g.id === id ? fn(g) : g) }, entry);
     const configured = cats.filter(g => (g.days || []).length).length;
-    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const clock = new Date(), now = new Date(clock); now.setHours(0, 0, 0, 0);
     const tomorrow = new Date(now.getTime() + this.D);
     const todayCats = this.garbOn(now), tomCats = this.garbOn(tomorrow);
     let reminder = '', remJp = '', remKind = '';
     const names = a => a.map(c => c.label || c.short || "").join(" + ");
     const jps = a => a.map(c => c.jp || c.short || "").join("・");
-    if (todayCats.length) { remKind = 'today'; reminder = names(todayCats) + ' goes out this morning'; remJp = jps(todayCats); }
+    // Collection is at 8:30; after that the morning reminder is stale, so move on to tomorrow.
+    const pastPickup = clock.getHours() * 60 + clock.getMinutes() >= 8 * 60 + 30;
+    if (todayCats.length && !pastPickup) { remKind = 'today'; reminder = names(todayCats) + ' goes out this morning — by 8:30'; remJp = jps(todayCats); }
     else if (tomCats.length) { remKind = 'eve'; reminder = names(tomCats) + ' goes out tomorrow morning — put it out tonight'; remJp = jps(tomCats); }
     return {
       garbageWard: S.ward || '',
@@ -2602,9 +2635,10 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
     const d = window.SUKKIRI_DATA;
     if (!d) return;
     const S = this.state, patch = {};
+    const gone = new Set(S.removedIds || []);
     const addNew = (key, seedList, make) => {
       const have = new Set((S[key] || []).map(x => x.id));
-      const add = (seedList || []).filter(x => !have.has(x.id)).map(make);
+      const add = (seedList || []).filter(x => !have.has(x.id) && !gone.has(x.id)).map(make);
       if (add.length) patch[key] = [...(S[key] || []), ...add];
       return add.length;
     };
@@ -2694,9 +2728,12 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
     }).sort((a, b) => a._days - b._days);
 
     const overdue = tasks.filter(t => t._days <= 0).length;
+    const risk = this.riskVals(S);
     const coachMsg = strict
       ? (overdue ? `${overdue} cycle${overdue > 1 ? 's' : ''} due. Handle them before anything else.` : 'Nothing due. Keep it that way.')
-      : (overdue ? `${overdue} cycle${overdue > 1 ? 's are' : ' is'} calling for you today — knock ${overdue > 1 ? 'them' : 'it'} out and enjoy that fresh-room feeling ✧` : 'All cycles are on track — your room thanks you. Sukkiri!');
+      : (overdue ? `${overdue} cycle${overdue > 1 ? 's are' : ' is'} calling for you today — knock ${overdue > 1 ? 'them' : 'it'} out and enjoy that fresh-room feeling ✧`
+        : risk.hasRisk ? 'Nothing overdue, but a few cycles need a nudge — see the flags below.'
+        : 'All cycles are on track — your room thanks you. Sukkiri!');
 
     const nextCheck = this.nextCheckDate();
     const checkWithin7 = S.lastCheck && now - S.lastCheck < 7 * D;
@@ -2769,7 +2806,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
 
     return {
       navItems: nav,
-      goNav: e => this.save({ screen: e.currentTarget.dataset.id }),
+      goNav: e => this.save({ screen: e.currentTarget.dataset.id, notice: '' }),
       goCheckin: () => this.save({ screen: 'checkin' }),
       points: String(S.points), streak: String(S.streak),
       isToday: S.screen === 'today', isCheckin: S.screen === 'checkin', isReports: S.screen === 'reports',
@@ -2777,16 +2814,20 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       isSupplies: S.screen === 'supplies', isPrint: S.screen === 'print',
       isGarbage: S.screen === 'garbage',
       ...this.suppliesVals(S, now), ...this.logVals(S), ...this.printVals(S), ...this.garbageVals(S),
-      ...this.timerVals(S), ...this.riskVals(S), ...this.gridVals(S),
+      ...this.timerVals(S), ...risk, ...this.gridVals(S),
       ...this.calVals(S), ...this.settingsVals(S),
       todayLabel: new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
       coachMsg, todayTasks: tasks,
       ...(() => {
+        // Health is what the rest of the screen says: overdue cycles, open risk flags
+        // (missed > clash/stack > slipping) and a recent penalty all pull it down.
         let h = 100 - overdue * 18;
+        risk.riskItems.forEach(r => { h -= r.sev === 'late' ? 10 : r.sev === 'slip' ? 3 : 6; });
         if (!checkWithin7 && S.lastCheck) h -= 12;
+        if (S.lastPenalty && now - S.lastPenalty < 7 * D) h -= 10;
         if (S.reports.length) h = Math.round((h + S.reports[0].overall) / 2);
         h = Math.max(5, Math.min(100, h));
-        const hero = h >= 85 ? 'Your room is sukkiri ✧' : h >= 60 ? 'Almost there — small tidy-ups today' : 'Time for a rescue mission';
+        const hero = h >= 90 ? 'Your room is sukkiri ✧' : h >= 60 ? 'Almost there — small tidy-ups today' : 'Time for a rescue mission';
         return { health: String(h), ringGrad: `#d95c8a ${Math.round(h * 3.6)}deg, rgba(255,255,255,0.75) 0deg`, heroTitle: strict ? `Room health: ${h}/100` : hero };
       })(),
       sparkleOp: overdue === 0 ? '1' : '0',
@@ -2797,6 +2838,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
         { nav: 'reports', value: String(S.reports.length), label: 'inspection reports', color: '#5c7a58', icon: ICON.doc, iconBg: '#e7eee4' }
       ],
       hasNotice: !!S.notice, noticeText: S.notice,
+      hasSaveErr: !!S.saveErr, saveErrText: S.saveErr || '',
       dismissNotice: () => this.save({ notice: '' }),
       checkinDue,
       ...(() => {
@@ -2824,7 +2866,10 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
         const id = e.currentTarget.dataset.id, cyc = S.cycles.find(c => c.id === id);
         this.save({ cycles: S.cycles.map(c => c.id === id ? { ...c, wk: !c.wk } : c) }, { kind: 'change', text: (cyc ? cyc.name : 'Cycle') + (cyc && cyc.wk ? ' can now fall on any day' : ' moved to weekends') });
       },
-      deleteCycle: e => { const id = e.currentTarget.dataset.id, cyc = S.cycles.find(c => c.id === id); this.save({ cycles: S.cycles.filter(c => c.id !== id) }, { kind: 'change', text: `Removed cycle ${cyc ? cyc.name : ''}` }); },
+      deleteCycle: e => {
+        const id = e.currentTarget.dataset.id, cyc = S.cycles.find(c => c.id === id);
+        this.save({ cycles: S.cycles.filter(c => c.id !== id), removedIds: [...new Set([...(S.removedIds || []), id])] }, { kind: 'change', text: `Removed cycle ${cyc ? cyc.name : ''}` });
+      },
       form: S.form,
       onField: e => { const t = e.currentTarget; this.save({ form: { ...S.form, [t.dataset.field]: t.value } }); },
       addCycle: () => {
@@ -2856,6 +2901,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       inspectDisabled: ready === 0, inspectOpacity: ready === 0 ? '0.45' : '1',
       runInspection: () => this.inspect(),
       hasInspectError: !!S.inspectError, inspectError: S.inspectError,
+      inspectHint: this.inspectAvailable() ? 'Claude compares each pair and writes your cleaning instructions.' : 'Inspection runs when Sukkiri is opened inside claude.ai — photos added here are kept until then.',
       reportsView, noReports: S.reports.length === 0,
       addSuggested: e => {
         const { name, price } = e.currentTarget.dataset;
