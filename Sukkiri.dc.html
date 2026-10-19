@@ -1289,6 +1289,9 @@ class Component extends DCLogic {
         if (missing.length) { s.cycles = [...(s.cycles || []), ...missing]; this._migrated = true; }
         if (!saved.supplies) s.supplies = seed.supplies;
         if (!saved.costReset1) { Object.assign(s, this.freshCost(s)); this._migrated = true; }
+        // A notice belongs to the visit that raised it; a saved one would reappear on every load.
+        s.notice = '';
+        if (!saved.penaltyRefund1) Object.assign(s, this.refundPenalties(s));
         if (!saved.wkMigrated) { s.cycles = (s.cycles || []).map(c => ({ ...c, wk: c.wk === undefined ? true : c.wk })); s.wkMigrated = true; }
         if (s.screen === 'log') s.screen = 'settings';
         if (!saved.garbageSaitama) { s.garbage = seed.garbage; s.garbageRules = seed.garbageRules; s.garbageSaitama = true; }
@@ -1328,7 +1331,7 @@ save(patch, entry) {
 
   // ---------- Supabase cloud sync (sukkiri_state) ----------
   SB_URL = 'https://wylxvmkcrexwfpjpbhyy.supabase.co';
-  BUILD = 'sk-20261019-r019';
+  BUILD = 'sk-20261019-r020';
   akLog(...a) { try { if (localStorage.getItem('akatsuki_debug') === '1') console.log('[ak]', ...a); } catch (e) {} }
   SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5bHh2bWtjcmV4d2ZwanBiaHl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2MzkxMDYsImV4cCI6MjA4NDIxNTEwNn0.6Bxo42hx4jwlJGWnfjiTpiDUsYfc1QLTN3YtrU1efak';
 
@@ -1382,6 +1385,18 @@ save(patch, entry) {
     else { this.syncCal(this.state); this.cloudState('on', 'Backed up ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })); if (!quiet) this.save({ notice: 'Backed up to your account.' }); }
   }
 
+  /* One-time refund (R020): builds before R018 charged missed check-ins even when no ideal
+     photo existed, so a check-in was never possible. Give those points back, once. */
+  refundPenalties(s) {
+    const out = { penaltyRefund1: true };
+    if ((s.areas || []).some(a => a.ideal) || (s.reports || []).length) return out;
+    const lost = (s.log || []).filter(e => e.kind === 'penalty')
+      .reduce((sum, e) => sum + (parseInt((/(\d+) points lost/.exec(e.text) || [])[1], 10) || 0), 0);
+    if (!lost) return out;
+    this._refunded = lost;
+    return { ...out, points: (s.points || 0) + lost, lastPenalty: null };
+  }
+
   /* One-time wipe of the cost-request history (Sep 30): records + per-item request badges. */
   freshCost(s) {
     return { costReqs: [], costReset1: true,
@@ -1400,6 +1415,8 @@ save(patch, entry) {
     const merged = { ...p, areas: (p.areas || []).map(a => keep[a.id] ? { ...a, ideal: keep[a.id].ideal, current: keep[a.id].current } : a) };
     delete merged.cloud;
     if (!p.costReset1) Object.assign(merged, this.freshCost(merged));
+    if (!p.penaltyRefund1) Object.assign(merged, this.refundPenalties(merged));
+    merged.notice = '';
     this.save(merged, { kind: 'change', text: 'Restored data from your account' });
     this.cloudState('on', 'Restored from ' + new Date(p.savedAt || Date.now()).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }));
   }
@@ -1705,6 +1722,10 @@ save(patch, entry) {
         { kind: 'penalty', text: `Missed ${missed} check-in${missed > 1 ? 's' : ''} — ${missed * pen} points lost, streak reset` });
     }
     if (this._migrated) { this._migrated = false; this.save({}, { kind: 'change', text: `Seeded ${this.state.cycles.length} cleaning & maintenance cycles` }); }
+    if (this._refunded) {
+      const n = this._refunded; this._refunded = 0;
+      this.save({ notice: `+${n} points returned — those check-ins weren't possible yet, so they shouldn't have cost you.` }, { kind: 'change', text: `Refunded ${n} points from early missed check-ins` });
+    }
     this.pushCal(this.state);
     this.syncSupplies();
     this.initCloud();

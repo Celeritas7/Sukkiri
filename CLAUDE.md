@@ -25,7 +25,8 @@ Legacy `sukkiri_cost_requests` localStorage push + clipboard JSON removed 2026-0
 - `save()` surfaces a `localStorage` quota failure as the `saveErr` banner (role=alert) instead of swallowing it; clears on the next successful save.
 - Deleted seed cycles go into `removedIds[]`; `load()` and `applyDataFile()` never re-add those ids.
 - Missed check-in penalty only runs when `inspectAvailable()` (host `window.claude.complete`) **and** at least one ideal photo exists; otherwise `penalized` is just moved forward so later photos don't back-charge. Penalty stamps `lastPenalty`.
-- `notice` auto-clears after 6 s and on tab change (`goNav`).
+- `notice` auto-clears after 6 s and on tab change (`goNav`), and is never restored from storage (`load()` + `cloudPull` blank it).
+- R020 one-time `refundPenalties()` (`penaltyRefund1`): returns points lost to pre-R018 penalties when no ideal photo or report ever existed.
 - Health = 100 − 18/overdue − risk flags (missed 10, clash/stack 6, slipping 3) − 12 if no check-in in 7 d − 10 if `lastPenalty` within 7 d, averaged with the latest report. Hero title "sukkiri" only at ≥ 90.
 - Garbage reminder drops the "this morning" line after 08:30 and rolls to tomorrow's; button is "All collection days".
 - `index.html` is a forwarder to `Sukkiri.dc.html` (keeps query + hash); edit only `Sukkiri.dc.html`.
