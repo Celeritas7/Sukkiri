@@ -10,7 +10,16 @@
 <helmet>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!-- Design system: My Calendar tokens only. The DS bundle (_ds_bundle.js) is deliberately NOT
+     loaded — it carries the calendar's own app.js/sukkiri.js, which would open a second Supabase
+     client and bind global key handlers. tokens/fonts.css is skipped too (24 families); the three
+     faces this theme needs are requested below. Zen Maru Gothic stays as the Japanese fallback. -->
+<link rel="stylesheet" href="_ds/my-calendar-design-system-4b262086-d495-4ab2-b123-7fa71c397820/tokens/colors.css">
+<link rel="stylesheet" href="_ds/my-calendar-design-system-4b262086-d495-4ab2-b123-7fa71c397820/tokens/typography.css">
+<link rel="stylesheet" href="_ds/my-calendar-design-system-4b262086-d495-4ab2-b123-7fa71c397820/tokens/shape.css">
+<link rel="stylesheet" href="_ds/my-calendar-design-system-4b262086-d495-4ab2-b123-7fa71c397820/tokens/themes.css">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Zen+Maru+Gothic:wght@500;700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script>document.documentElement.setAttribute('data-theme', '9'); /* Forest Morning, pinned (Phase 1 decision 1a) */</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/akatsuki-client.js?v=s4b2"></script>
 <script src="js/adapters/sukkiri-adapter.js?v=s4b2"></script>
@@ -18,15 +27,32 @@
 <script src="js/print.js"></script>
 <script src="js/weather.js"></script>
 <style>
-html, body { margin:0; padding:0; background:#f1f2ea; }
+/* Sukkiri-local tokens (Phase 1 audit §2b): what the DS has no token for. Scoped to :root so
+   they sit beside the DS tokens; values are contrast-checked on the Forest Morning card. */
+:root {
+  --sk-accent:#c2427a;            /* rose brand accent, darkened from #d95c8a so white text passes AA (4.8:1) — decision 2b */
+  --sk-accent-dk:#b83d70;
+  --sk-ok:#256b41;   --sk-ok-bg:#e6f2e7;
+  --sk-warn:#7a5512; --sk-warn-bg:#f7edd8; --sk-warn-dot:#e0a83a;
+  --sk-danger:#8a2f55; --sk-danger-bg:#fbe9f0;
+  --sk-info:#2f5c8f; --sk-info-bg:#eef2fa;
+  --surface-sunken:color-mix(in srgb,var(--txt) 4%,var(--card-bg));
+  --sk-shadow-c:rgba(46,125,50,.09);
+  --focus-ring:0 0 0 3px color-mix(in srgb,var(--accent) 45%,transparent);
+  --jp-font:'Zen Maru Gothic';
+  --fs-caps:11px;
+}
+/* Forest Morning's --btn is a gradient whose white text fails AA (3.3:1); use the theme accent solid (5.1:1). */
+:root[data-theme="9"] { --btn:#2e7d32; --btn-sh:rgba(46,125,50,.35); }
+html, body { margin:0; padding:0; background:var(--bg); font-family:var(--b-font),var(--jp-font),sans-serif; color:var(--txt); }
 *, *::before, *::after { box-sizing: border-box; }
-a { color:#5c7a58; } a:hover { color:#d95c8a; }
+a { color:var(--accent); } a:hover { color:var(--sk-accent); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
 @keyframes floaty2 { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(9px) scale(1.06); } }
 @keyframes twinkle { 0%, 100% { opacity:0.25; transform:scale(0.7); } 50% { opacity:1; transform:scale(1.15); } }
 @keyframes drift { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(9px, -5px); } }
-input::placeholder { color:#a8ad9f; }
+input::placeholder { color:var(--txt2); }
 @page { margin: 10mm; }
 /* Print-sheet geometry lives in custom properties on the root element (React owns the
    inline style attribute, so fitSheets can never write there). --sk-k zooms the sheet
@@ -65,61 +91,61 @@ html.sk-measure .sk-page { height: auto !important; }
 }
 </style>
 </helmet>
-<div style="min-height:100vh; background:#f1f2ea; font-family:'Nunito',sans-serif; color:#3b4038;">
+<div style="min-height:100vh; background:var(--bg); font-family:var(--b-font),var(--jp-font),sans-serif; color:var(--txt);">
   <sc-if value="{{ showLogin }}" hint-placeholder-val="{{ false }}">
     <div data-screen-label="Sign in" style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:32px 18px; box-sizing:border-box;">
       <div style="width:100%; max-width:410px; display:flex; flex-direction:column; gap:22px;">
         <div style="text-align:center;">
-          <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:40px; color:#3f5540; line-height:1;">Sukkiri</div>
-          <div style="font-size:13px; color:#a0a696; font-weight:700; margin-top:6px;">すっきり · room coach</div>
+          <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:40px; color:var(--txt); line-height:1;">Sukkiri</div>
+          <div style="font-size:var(--fs-control); color:var(--txt2); font-weight:700; margin-top:6px;">すっきり · room coach</div>
         </div>
-        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:22px; padding:28px 26px; box-shadow:0 12px 40px rgba(59,64,56,0.08); display:flex; flex-direction:column; gap:16px;">
+        <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-box); padding:28px 26px; box-shadow:0 12px 40px var(--sk-shadow-c); display:flex; flex-direction:column; gap:16px;">
           <div>
-            <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:24px; margin:0 0 6px; color:#3b4038;">Welcome back</h1>
-            <div style="font-size:14px; color:#7c8274; font-weight:600; line-height:1.5; text-wrap:pretty;">Sign in with the account you use for your calendar and cost apps.</div>
+            <h1 style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:24px; margin:0 0 6px; color:var(--txt);">Welcome back</h1>
+            <div style="font-size:var(--fs-stats); color:var(--txt2); font-weight:600; line-height:1.5; text-wrap:pretty;">Sign in with the account you use for your calendar and cost apps.</div>
           </div>
           <sc-if value="{{ hasLoginMsg }}" hint-placeholder-val="{{ false }}">
-            <div style="font-size:13px; font-weight:700; color:{{ loginMsgColor }}; background:{{ loginMsgBg }}; border-radius:12px; padding:10px 13px; line-height:1.45;">{{ loginMsg }}</div>
+            <div style="font-size:var(--fs-control); font-weight:700; color:{{ loginMsgColor }}; background:{{ loginMsgBg }}; border-radius:var(--r-btn); padding:10px 13px; line-height:1.45;">{{ loginMsg }}</div>
           </sc-if>
           <div>
-            <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:6px;">EMAIL</div>
-            <input value="{{ form.cloudEmail }}" data-field="cloudEmail" onChange="{{ onField }}" type="email" autocomplete="email" placeholder="you@example.com" style="width:100%; box-sizing:border-box; border:1px solid #dde0d1; border-radius:12px; padding:12px 14px; font-family:'Nunito',sans-serif; font-size:15px; background:#fff; color:#3b4038; outline:none;">
+            <div style="font-size:var(--fs-caps); font-weight:800; letter-spacing:0.06em; color:var(--txt2); margin-bottom:6px;">EMAIL</div>
+            <input value="{{ form.cloudEmail }}" data-field="cloudEmail" onChange="{{ onField }}" type="email" autocomplete="email" placeholder="you@example.com" style="width:100%; box-sizing:border-box; border:1px solid var(--border); border-radius:var(--r-btn); padding:12px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-input); background:var(--input-bg); color:var(--txt); outline:none;">
           </div>
           <div>
-            <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:6px;">PASSWORD</div>
-            <input value="{{ form.cloudPass }}" data-field="cloudPass" onChange="{{ onField }}" onKeyDown="{{ cloudKey }}" type="password" autocomplete="current-password" placeholder="Your password" style="width:100%; box-sizing:border-box; border:1px solid #dde0d1; border-radius:12px; padding:12px 14px; font-family:'Nunito',sans-serif; font-size:15px; background:#fff; color:#3b4038; outline:none;">
+            <div style="font-size:var(--fs-caps); font-weight:800; letter-spacing:0.06em; color:var(--txt2); margin-bottom:6px;">PASSWORD</div>
+            <input value="{{ form.cloudPass }}" data-field="cloudPass" onChange="{{ onField }}" onKeyDown="{{ cloudKey }}" type="password" autocomplete="current-password" placeholder="Your password" style="width:100%; box-sizing:border-box; border:1px solid var(--border); border-radius:var(--r-btn); padding:12px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-input); background:var(--input-bg); color:var(--txt); outline:none;">
           </div>
-          <div onClick="{{ cloudIn }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:15px; padding:13px 18px; border-radius:999px; cursor:pointer; text-align:center;" style-hover="background:#4a6647;" style-active="transform:scale(0.98);">{{ signInLabel }}</div>
+          <div onClick="{{ cloudIn }}" style="background:var(--btn); color:#fff; font-weight:800; font-size:var(--fs-input); padding:13px 18px; border-radius:var(--r-pill); cursor:pointer; text-align:center;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);" style-active="transform:scale(0.98);">{{ signInLabel }}</div>
           <div style="display:flex; align-items:center; gap:12px;">
-            <div style="flex:1; height:1px; background:#e0e3d6;"></div>
-            <div style="font-size:12px; font-weight:800; color:#a8ad9f;">or</div>
-            <div style="flex:1; height:1px; background:#e0e3d6;"></div>
+            <div style="flex:1; height:1px; background:var(--border);"></div>
+            <div style="font-size:var(--fs-hint); font-weight:800; color:var(--txt2);">or</div>
+            <div style="flex:1; height:1px; background:var(--border);"></div>
           </div>
-          <div onClick="{{ cloudGoogle }}" style="display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; border:1.5px solid #dde0d1; color:#3b4038; font-weight:800; font-size:15px; padding:12px 18px; border-radius:999px; cursor:pointer;" style-hover="background:#f7f8f2; border-color:#cfd4c2;" style-active="transform:scale(0.98);">
+          <div onClick="{{ cloudGoogle }}" style="display:flex; align-items:center; justify-content:center; gap:10px; background:#fff; border:1.5px solid var(--border); color:var(--txt); font-weight:800; font-size:var(--fs-input); padding:12px 18px; border-radius:var(--r-pill); cursor:pointer;" style-hover="background:var(--surface-sunken); border-color:var(--border);" style-active="transform:scale(0.98);">
             <svg viewBox="0 0 48 48" width="18" height="18"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.090-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.970-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.180 1.48-4.93 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path></svg>
             <span>Continue with Google</span>
           </div>
-          <div style="display:flex; justify-content:center; gap:6px; font-size:13.5px; font-weight:700; color:#7c8274;">
+          <div style="display:flex; justify-content:center; gap:6px; font-size:13.5px; font-weight:700; color:var(--txt2);">
             <span>New here?</span>
-            <span onClick="{{ cloudUp }}" style="color:#5c7a58; font-weight:800; cursor:pointer; text-decoration:underline; text-underline-offset:3px;">Create an account</span>
+            <span onClick="{{ cloudUp }}" style="color:var(--accent); font-weight:800; cursor:pointer; text-decoration:underline; text-underline-offset:3px;">Create an account</span>
           </div>
         </div>
         <div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-          <div onClick="{{ useLocal }}" style="font-size:13.5px; font-weight:800; color:#8b917f; cursor:pointer; padding:6px 10px;" style-hover="color:#5c7a58;">Continue on this device only →</div>
-          <div style="font-size:11px; color:#b3b8a8; font-weight:700;">Without an account, nothing reaches your calendar or cost app · build {{ buildId }}</div>
+          <div onClick="{{ useLocal }}" style="font-size:13.5px; font-weight:800; color:var(--txt2); cursor:pointer; padding:6px 10px;" style-hover="color:var(--accent);">Continue on this device only →</div>
+          <div style="font-size:var(--fs-caps); color:var(--txt2); font-weight:700;">Without an account, nothing reaches your calendar or cost app · build {{ buildId }}</div>
         </div>
       </div>
     </div>
   </sc-if>
   <sc-if value="{{ showApp }}" hint-placeholder-val="{{ true }}">
-  <div data-noprint="1" style="display:flex; align-items:center; flex-wrap:wrap; gap:14px; padding:14px 22px; background:#fbfbf6; border-bottom:1px solid #e0e3d6;">
+  <div data-noprint="1" style="display:flex; align-items:center; flex-wrap:wrap; gap:14px; padding:14px 22px; background:var(--card-bg); border-bottom:1px solid color-mix(in srgb,var(--border) 30%,transparent);">
     <div style="display:flex; align-items:baseline; gap:8px; margin-right:8px;">
-      <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:24px; color:#3f5540;">Sukkiri</div>
-      <div style="font-size:12px; color:#a0a696; font-weight:700;">すっきり · room coach</div>
+      <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:24px; color:var(--txt);">Sukkiri</div>
+      <div style="font-size:var(--fs-hint); color:var(--txt2); font-weight:700;">すっきり · room coach</div>
     </div>
     <div style="display:flex; flex-wrap:wrap; gap:6px; flex:1;">
       <sc-for list="{{ navItems }}" as="nv" hint-placeholder-count="5">
-        <div onClick="{{ goNav }}" data-id="{{ nv.id }}" style="display:flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; cursor:pointer; background:{{ nv.bg }}; color:{{ nv.color }}; font-weight:800; font-size:13.5px; white-space:nowrap;" style-hover="filter:brightness(0.97);">
+        <div onClick="{{ goNav }}" data-id="{{ nv.id }}" style="display:flex; align-items:center; gap:8px; padding:8px 16px; border-radius:var(--r-pill); cursor:pointer; background:{{ nv.bg }}; color:{{ nv.color }}; font-weight:800; font-size:13.5px; white-space:nowrap;" style-hover="filter:brightness(0.97);">
           <span style="width:7px; height:7px; border-radius:50%; background:{{ nv.dot }};"></span>
           <span>{{ nv.label }}</span>
         </div>
@@ -127,12 +153,12 @@ html.sk-measure .sk-page { height: auto !important; }
     </div>
     <div style="display:flex; align-items:center; gap:14px;">
       <div style="text-align:right;">
-        <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:20px; color:#d95c8a; line-height:1;">{{ points }}</div>
-        <div style="font-size:11px; color:#a0a696; font-weight:700;">points</div>
+        <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:20px; color:var(--sk-accent); line-height:1;">{{ points }}</div>
+        <div style="font-size:var(--fs-caps); color:var(--txt2); font-weight:700;">points</div>
       </div>
       <div style="text-align:right;">
-        <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:20px; color:#5c7a58; line-height:1;">{{ streak }}</div>
-        <div style="font-size:11px; color:#a0a696; font-weight:700;">week streak</div>
+        <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:20px; color:var(--accent); line-height:1;">{{ streak }}</div>
+        <div style="font-size:var(--fs-caps); color:var(--txt2); font-weight:700;">week streak</div>
       </div>
     </div>
   </div>
@@ -140,21 +166,21 @@ html.sk-measure .sk-page { height: auto !important; }
     <div data-noprint="1" style="position:fixed; left:0; right:0; bottom:0; z-index:40; display:flex; justify-content:center; padding:12px; pointer-events:none;">
       <div style="display:flex; flex-direction:column; gap:8px; width:100%; max-width:640px; pointer-events:auto;">
         <sc-for list="{{ timerView }}" as="tm" hint-placeholder-count="1">
-          <div style="position:relative; overflow:hidden; background:{{ tm.bg }}; border:1.5px solid {{ tm.border }}; border-radius:16px; padding:12px 16px; box-shadow:0 10px 30px rgba(59,64,56,0.16); display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+          <div style="position:relative; overflow:hidden; background:{{ tm.bg }}; border:1.5px solid {{ tm.border }}; border-radius:var(--r-card); padding:12px 16px; box-shadow:var(--sh-panel); display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
             <div style="position:absolute; left:0; bottom:0; height:3px; background:{{ tm.bar }}; width:{{ tm.pct }}%; transition:width 1s linear;"></div>
-            <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:23px; color:{{ tm.color }}; min-width:80px;">{{ tm.timeLeft }}</div>
+            <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:23px; color:{{ tm.color }}; min-width:80px;">{{ tm.timeLeft }}</div>
             <div style="flex:1; min-width:140px;">
-              <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ tm.label }}</div>
-              <div style="font-size:12px; font-weight:700; color:#9aa08e;">{{ tm.sub }}</div>
+              <div style="font-weight:800; font-size:14.5px; color:var(--txt);">{{ tm.label }}</div>
+              <div style="font-size:var(--fs-hint); font-weight:700; color:var(--txt2);">{{ tm.sub }}</div>
             </div>
             <sc-if value="{{ tm.running }}" hint-placeholder-val="{{ true }}">
               <div style="display:flex; gap:8px;">
-                <div onClick="{{ extendTimer }}" data-id="{{ tm.id }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 13px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274;" style-hover="background:#f4f5ec;">+5 min</div>
-                <div onClick="{{ stopTimer }}" data-id="{{ tm.id }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 13px; border-radius:999px; color:#c98aa4;" style-hover="color:#a83e66;">Stop</div>
+                <div onClick="{{ extendTimer }}" data-id="{{ tm.id }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 13px; border-radius:var(--r-pill); border:1.5px solid var(--border); color:var(--txt2);" style-hover="background:var(--surface-sunken);">+5 min</div>
+                <div onClick="{{ stopTimer }}" data-id="{{ tm.id }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 13px; border-radius:var(--r-pill); color:var(--sk-danger);" style-hover="color:var(--sk-danger);">Stop</div>
               </div>
             </sc-if>
             <sc-if value="{{ tm.done }}" hint-placeholder-val="{{ false }}">
-              <div onClick="{{ finishTimer }}" data-id="{{ tm.id }}" style="cursor:pointer; background:#d95c8a; color:#fff; font-size:13px; font-weight:800; padding:9px 17px; border-radius:999px; white-space:nowrap;" style-hover="background:#c74a78;">{{ tm.finishLabel }}</div>
+              <div onClick="{{ finishTimer }}" data-id="{{ tm.id }}" style="cursor:pointer; background:var(--sk-accent); color:#fff; font-size:var(--fs-control); font-weight:800; padding:9px 17px; border-radius:var(--r-pill); white-space:nowrap;" style-hover="background:var(--sk-accent-dk);">{{ tm.finishLabel }}</div>
             </sc-if>
           </div>
         </sc-for>
@@ -165,50 +191,50 @@ html.sk-measure .sk-page { height: auto !important; }
     <input type="file" accept="image/*" ref="{{ fileRef }}" onChange="{{ onFileChosen }}" style="display:none;">
 
     <sc-if value="{{ hasSaveErr }}" hint-placeholder-val="{{ false }}">
-      <div data-noprint="1" role="alert" style="display:flex; align-items:center; gap:12px; background:#fdf1e4; border:1.5px solid #e0a83a; border-radius:14px; padding:12px 16px; margin-bottom:20px;">
+      <div data-noprint="1" role="alert" style="display:flex; align-items:center; gap:12px; background:var(--sk-warn-bg); border:1.5px solid var(--sk-warn-dot); border-radius:var(--r-panel); padding:12px 16px; margin-bottom:20px;">
         <div style="font-size:20px;">⚠️</div>
-        <div style="flex:1; font-size:14px; font-weight:700; color:#9a6c1c;">{{ saveErrText }}</div>
+        <div style="flex:1; font-size:var(--fs-stats); font-weight:700; color:var(--sk-warn);">{{ saveErrText }}</div>
       </div>
     </sc-if>
     <sc-if value="{{ hasNotice }}" hint-placeholder-val="{{ false }}">
-      <div data-noprint="1" role="status" style="display:flex; align-items:center; gap:12px; background:#fbe9f0; border:1px solid #f2cdda; border-radius:14px; padding:12px 16px; margin-bottom:20px;">
-        <div style="flex:1; font-size:14px; font-weight:700; color:#a83e66;">{{ noticeText }}</div>
-        <div onClick="{{ dismissNotice }}" style="cursor:pointer; color:#c98aa4; font-weight:800; padding:2px 8px;" style-hover="color:#a83e66;">✕</div>
+      <div data-noprint="1" role="status" style="display:flex; align-items:center; gap:12px; background:var(--sk-danger-bg); border:1px solid color-mix(in srgb,var(--sk-danger) 25%,transparent); border-radius:var(--r-panel); padding:12px 16px; margin-bottom:20px;">
+        <div style="flex:1; font-size:var(--fs-stats); font-weight:700; color:var(--sk-danger);">{{ noticeText }}</div>
+        <div onClick="{{ dismissNotice }}" style="cursor:pointer; color:var(--sk-danger); font-weight:800; padding:2px 8px;" style-hover="color:var(--sk-danger);">✕</div>
       </div>
     </sc-if>
 
     <sc-if value="{{ isCal }}" hint-placeholder-val="{{ false }}">
       <div>
         <div style="display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:4px;">
-          <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0; color:#3b4038;">Calendar</h1>
-          <div style="font-size:13px; color:#8b917f; font-weight:700;">{{ wxPlace }}</div>
+          <h1 style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:var(--fs-modal-title); margin:0; color:var(--txt);">Calendar</h1>
+          <div style="font-size:var(--fs-control); color:var(--txt2); font-weight:700;">{{ wxPlace }}</div>
         </div>
-        <p style="margin:0 0 16px; font-size:14.5px; color:#7c8274; line-height:1.55; max-width:62ch; text-wrap:pretty;">Trash days, cycles due, drying weather and your notes on one grid. Tap a day to open it.</p>
+        <p style="margin:0 0 16px; font-size:14.5px; color:var(--txt2); line-height:1.55; max-width:62ch; text-wrap:pretty;">Trash days, cycles due, drying weather and your notes on one grid. Tap a day to open it.</p>
 
         <div style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;">
-          <div onClick="{{ wxRefresh }}" style="cursor:pointer; font-size:12.5px; font-weight:800; color:#5c7a58; background:#e7eee4; border:1px solid #d5dfcf; border-radius:999px; padding:7px 14px;" style-hover="background:#dbe6d6;">↻ Refresh forecast</div>
-          <div onClick="{{ cToday }}" style="cursor:pointer; font-size:12.5px; font-weight:800; color:#7c8274; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:999px; padding:7px 14px;" style-hover="background:#f4f5ec;">Jump to today</div>
+          <div onClick="{{ wxRefresh }}" style="cursor:pointer; font-size:12.5px; font-weight:800; color:var(--accent); background:color-mix(in srgb,var(--accent) 10%,var(--card-bg)); border:1px solid color-mix(in srgb,var(--accent) 28%,transparent); border-radius:var(--r-pill); padding:7px 14px;" style-hover="background:var(--sk-ok-bg);">↻ Refresh forecast</div>
+          <div onClick="{{ cToday }}" style="cursor:pointer; font-size:12.5px; font-weight:800; color:var(--txt2); background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-pill); padding:7px 14px;" style-hover="background:var(--surface-sunken);">Jump to today</div>
         </div>
 
         <sc-if value="{{ hasWxErr }}" hint-placeholder-val="{{ false }}">
-          <div style="background:#f4f5ec; border:1px solid #e0e3d6; border-radius:14px; padding:11px 15px; margin-bottom:14px; font-size:13.5px; font-weight:700; color:#8b917f;">{{ wxErr }}</div>
+          <div style="background:var(--surface-sunken); border:1px solid var(--border); border-radius:var(--r-panel); padding:11px 15px; margin-bottom:14px; font-size:13.5px; font-weight:700; color:var(--txt2);">{{ wxErr }}</div>
         </sc-if>
 
         <div style="display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:7px; margin-bottom:16px;">
           <sc-for list="{{ wxStrip }}" as="w" hint-placeholder-count="7">
-            <div style="background:{{ w.bg }}; border:1px solid {{ w.border }}; border-radius:13px; padding:9px 6px; display:flex; flex-direction:column; align-items:center; gap:3px; text-align:center;">
-              <div style="font-size:10px; font-weight:800; letter-spacing:0.05em; color:#8b917f;">{{ w.dow }}</div>
+            <div style="background:{{ w.bg }}; border:1px solid {{ w.border }}; border-radius:var(--r-panel); padding:9px 6px; display:flex; flex-direction:column; align-items:center; gap:3px; text-align:center;">
+              <div style="font-size:10px; font-weight:800; letter-spacing:0.05em; color:var(--txt2);">{{ w.dow }}</div>
               <div style="font-size:19px; line-height:1.1;">{{ w.icon }}</div>
-              <div style="font-size:12px; font-weight:800; color:#3b4038;">{{ w.hi }}</div>
-              <div style="font-size:10.5px; font-weight:700; color:#a8ad9f;">{{ w.lo }}</div>
+              <div style="font-size:var(--fs-hint); font-weight:800; color:var(--txt);">{{ w.hi }}</div>
+              <div style="font-size:10.5px; font-weight:700; color:var(--txt2);">{{ w.lo }}</div>
               <svg viewBox="0 0 24 24" width="15" height="15" style="display:{{ w.markShow }};"><path d="{{ w.markPath }}" fill="{{ w.markColor }}"></path></svg>
-              <div style="font-size:9.5px; font-weight:800; color:#a8ad9f;">{{ w.rh }}</div>
+              <div style="font-size:9.5px; font-weight:800; color:var(--txt2);">{{ w.rh }}</div>
             </div>
           </sc-for>
         </div>
 
         <sc-if value="{{ hasBestDry }}" hint-placeholder-val="{{ false }}">
-          <div style="display:flex; gap:10px; align-items:flex-start; background:#e6f2e7; border:1px solid #cfe3d2; border-radius:14px; padding:12px 16px; margin-bottom:10px;">
+          <div style="display:flex; gap:10px; align-items:flex-start; background:var(--sk-ok-bg); border:1px solid color-mix(in srgb,var(--accent) 28%,transparent); border-radius:var(--r-panel); padding:12px 16px; margin-bottom:10px;">
             <svg viewBox="0 0 24 24" width="17" height="17" style="flex:none; margin-top:1px;"><path d="{{ dryLegendGood }}" fill="#2f7d4f"></path></svg>
             <div style="flex:1; min-width:0;">
               <div style="font-size:13.5px; font-weight:800; color:#2f7d4f; line-height:1.45;">{{ bestDryLabel }}</div>
@@ -217,24 +243,24 @@ html.sk-measure .sk-page { height: auto !important; }
           </div>
         </sc-if>
         <sc-if value="{{ hasRainyTrash }}" hint-placeholder-val="{{ false }}">
-          <div style="display:flex; gap:10px; align-items:flex-start; background:#f7edd8; border:1px solid #e8d9b0; border-radius:14px; padding:12px 16px; margin-bottom:10px;">
-            <div style="font-size:15px;">☔</div>
-            <div style="flex:1; min-width:0; font-size:13.5px; font-weight:800; color:#9a6c1c; line-height:1.45;">{{ rainyTrash }}</div>
+          <div style="display:flex; gap:10px; align-items:flex-start; background:var(--sk-warn-bg); border:1px solid color-mix(in srgb,var(--sk-warn) 30%,transparent); border-radius:var(--r-panel); padding:12px 16px; margin-bottom:10px;">
+            <div style="font-size:var(--fs-input);">☔</div>
+            <div style="flex:1; min-width:0; font-size:13.5px; font-weight:800; color:var(--sk-warn); line-height:1.45;">{{ rainyTrash }}</div>
           </div>
         </sc-if>
 
-        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:20px; padding:16px; margin-top:14px;">
+        <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-box); padding:16px; margin-top:14px;">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;">
-            <div onClick="{{ cPrev }}" style="cursor:pointer; font-size:18px; font-weight:800; color:#8b917f; padding:2px 12px; border-radius:10px;" style-hover="background:#f1f2ea; color:#3b4038;">‹</div>
-            <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:19px; color:#3b4038;">{{ cMonthLabel }}</div>
-            <div onClick="{{ cNext }}" style="cursor:pointer; font-size:18px; font-weight:800; color:#8b917f; padding:2px 12px; border-radius:10px;" style-hover="background:#f1f2ea; color:#3b4038;">›</div>
+            <div onClick="{{ cPrev }}" style="cursor:pointer; font-size:18px; font-weight:800; color:var(--txt2); padding:2px 12px; border-radius:var(--r-input);" style-hover="background:var(--bg); color:var(--txt);">‹</div>
+            <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:19px; color:var(--txt);">{{ cMonthLabel }}</div>
+            <div onClick="{{ cNext }}" style="cursor:pointer; font-size:18px; font-weight:800; color:var(--txt2); padding:2px 12px; border-radius:var(--r-input);" style-hover="background:var(--bg); color:var(--txt);">›</div>
           </div>
           <div style="display:flex; justify-content:center; gap:6px; margin-bottom:12px;">
             <sc-for list="{{ symThemes }}" as="t" hint-placeholder-count="3">
-              <div onClick="{{ setSymTheme }}" data-id="{{ t.id }}" style="cursor:pointer; display:flex; align-items:center; justify-content:center; width:38px; height:32px; border-radius:10px; background:{{ t.bg }}; border:1.5px solid {{ t.border }};" style-hover="border-color:#8aa882;">
-                <span style="display:inline-flex; align-items:center; background:{{ t.inner }}; border-radius:5px; padding:{{ t.innerPad }};">
+              <div onClick="{{ setSymTheme }}" data-id="{{ t.id }}" style="cursor:pointer; display:flex; align-items:center; justify-content:center; width:38px; height:32px; border-radius:var(--r-input); background:{{ t.bg }}; border:1.5px solid {{ t.border }};" style-hover="border-color:var(--accent);">
+                <span style="display:inline-flex; align-items:center; background:{{ t.inner }}; border-radius:var(--r-badge); padding:{{ t.innerPad }};">
                   <svg viewBox="0 0 24 24" width="{{ t.size }}" height="{{ t.size }}" style="display:{{ t.showG }};"><path d="{{ t.path }}" fill="#2980b9"></path></svg>
-                  <span style="display:{{ t.showE }}; font-size:16px; line-height:1;">{{ t.emoji }}</span>
+                  <span style="display:{{ t.showE }}; font-size:var(--fs-label); line-height:1;">{{ t.emoji }}</span>
                 </span>
               </div>
             </sc-for>
@@ -247,24 +273,24 @@ html.sk-measure .sk-page { height: auto !important; }
           <sc-for list="{{ cWeeks }}" as="wk" hint-placeholder-count="5">
             <div style="display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:5px; margin-bottom:5px;">
               <sc-for list="{{ wk.cells }}" as="c" hint-placeholder-count="7">
-                <div onClick="{{ cPickDay }}" data-key="{{ c.key }}" title="{{ c.title }}" style="position:relative; cursor:pointer; min-height:74px; background:{{ c.bg }}; border:1.5px solid {{ c.border }}; border-radius:11px; padding:5px 6px; display:flex; flex-direction:column; gap:3px; overflow:hidden;" style-hover="border-color:#8aa882;">
+                <div onClick="{{ cPickDay }}" data-key="{{ c.key }}" title="{{ c.title }}" style="position:relative; cursor:pointer; min-height:74px; background:{{ c.bg }}; border:1.5px solid {{ c.border }}; border-radius:var(--r-input); padding:5px 6px; display:flex; flex-direction:column; gap:3px; overflow:hidden;" style-hover="border-color:var(--accent);">
                   <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:2px; pointer-events:none;">
                     <sc-for list="{{ c.marks }}" as="g" hint-placeholder-count="0">
                       <svg viewBox="0 0 24 24" width="{{ g.wm }}" height="{{ g.wm }}" style="display:block;"><path d="{{ g.path }}" fill="{{ g.color }}" opacity="0.26"></path></svg>
                     </sc-for>
                   </div>
                   <div style="position:relative; display:flex; align-items:center; justify-content:space-between; gap:3px;">
-                    <span style="font-size:13px; font-weight:800; color:{{ c.numColor }};">{{ c.num }}</span>
-                    <span style="font-size:11px;">{{ c.wxIcon }}</span>
+                    <span style="font-size:var(--fs-control); font-weight:800; color:{{ c.numColor }};">{{ c.num }}</span>
+                    <span style="font-size:var(--fs-caps);">{{ c.wxIcon }}</span>
                   </div>
                   <div style="position:relative; display:flex; align-items:center; gap:3px; flex-wrap:wrap; margin-top:1px;">
                     <sc-for list="{{ c.syms }}" as="s" hint-placeholder-count="0">
-                      <span style="display:inline-flex; align-items:center; background:{{ s.chipBg }}; border-radius:5px; padding:{{ s.chipPad }};">
+                      <span style="display:inline-flex; align-items:center; background:{{ s.chipBg }}; border-radius:var(--r-badge); padding:{{ s.chipPad }};">
                         <svg viewBox="0 0 24 24" width="{{ s.size }}" height="{{ s.size }}" style="display:{{ s.show }};"><path d="{{ s.path }}" fill="{{ s.color }}"></path></svg>
-                        <span style="display:{{ s.showEmoji }}; font-size:14px; line-height:1;">{{ s.emoji }}</span>
+                        <span style="display:{{ s.showEmoji }}; font-size:var(--fs-stats); line-height:1;">{{ s.emoji }}</span>
                       </span>
                     </sc-for>
-                    <span style="font-size:10px; font-weight:800; color:#a8ad9f;">{{ c.more }}</span>
+                    <span style="font-size:10px; font-weight:800; color:var(--txt2);">{{ c.more }}</span>
                   </div>
                   <div style="position:relative; margin-top:auto; display:flex; align-items:center; gap:3px;">
                     <svg viewBox="0 0 24 24" width="15" height="15" style="display:{{ c.dryShow }};"><path d="{{ c.dryPath }}" fill="{{ c.dryColor }}"></path></svg>
@@ -274,44 +300,44 @@ html.sk-measure .sk-page { height: auto !important; }
               </sc-for>
             </div>
           </sc-for>
-          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:10px; padding-top:11px; border-top:1px solid #eaece0;">
+          <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:10px; padding-top:11px; border-top:1px solid color-mix(in srgb,var(--border) 30%,transparent);">
             <sc-for list="{{ gLegend }}" as="g" hint-placeholder-count="3">
               <div style="display:flex; align-items:center; gap:4px;">
                 <svg viewBox="0 0 24 24" width="14" height="14"><path d="{{ g.path }}" fill="{{ g.color }}" opacity="0.4"></path></svg>
-                <span style="font-size:10.5px; font-weight:800; color:#8b917f;">{{ g.short }}</span>
+                <span style="font-size:10.5px; font-weight:800; color:var(--txt2);">{{ g.short }}</span>
               </div>
             </sc-for>
             <div style="display:flex; align-items:center; gap:5px;">
               <svg viewBox="0 0 24 24" width="14" height="14"><path d="{{ dryLegendGood }}" fill="#2f7d4f"></path></svg>
-              <svg viewBox="0 0 24 24" width="14" height="14"><path d="{{ dryLegendOk }}" fill="#9a6c1c"></path></svg>
+              <svg viewBox="0 0 24 24" width="14" height="14"><path d="{{ dryLegendOk }}" fill="var(--sk-warn)"></path></svg>
               <svg viewBox="0 0 24 24" width="14" height="14"><path d="{{ dryLegendBad }}" fill="#b03a4a"></path></svg>
-              <span style="font-size:10.5px; font-weight:800; color:#8b917f;">only on days with a cycle</span>
+              <span style="font-size:10.5px; font-weight:800; color:var(--txt2);">only on days with a cycle</span>
             </div>
-            <span style="width:6px; height:6px; border-radius:50%; background:#d95c8a;"></span>
+            <span style="width:6px; height:6px; border-radius:50%; background:var(--sk-accent);"></span>
           </div>
         </div>
 
-        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:20px; padding:20px 22px; margin-top:16px;">
+        <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-box); padding:20px 22px; margin-top:16px;">
           <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
-            <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:20px; color:#3b4038;">{{ selLabel }}</div>
-            <div style="display:flex; align-items:center; gap:7px; background:{{ selDryBg }}; border-radius:999px; padding:5px 13px;">
+            <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:20px; color:var(--txt);">{{ selLabel }}</div>
+            <div style="display:flex; align-items:center; gap:7px; background:{{ selDryBg }}; border-radius:var(--r-pill); padding:5px 13px;">
               <svg viewBox="0 0 24 24" width="16" height="16" style="display:{{ selDryShow }};"><path d="{{ selDryPath }}" fill="{{ selDryColor }}"></path></svg>
               <span style="font-size:12.5px; font-weight:800; color:{{ selDryColor }};">{{ selDryScore }}</span>
             </div>
           </div>
-          <div style="font-size:14px; font-weight:700; color:#3b4038; margin-bottom:4px;">{{ selWxLine }}</div>
-          <div style="font-size:13px; font-weight:700; color:#8b917f;">{{ selDryWhy }} · {{ selDrySplit }}</div>
+          <div style="font-size:var(--fs-stats); font-weight:700; color:var(--txt); margin-bottom:4px;">{{ selWxLine }}</div>
+          <div style="font-size:var(--fs-control); font-weight:700; color:var(--txt2);">{{ selDryWhy }} · {{ selDrySplit }}</div>
 
           <sc-if value="{{ hasSelCats }}" hint-placeholder-val="{{ false }}">
             <div style="margin-top:16px;">
-              <div style="font-size:11px; font-weight:800; letter-spacing:0.07em; color:#a8ad9f; margin-bottom:7px;">GARBAGE</div>
+              <div style="font-size:var(--fs-caps); font-weight:800; letter-spacing:0.07em; color:var(--txt2); margin-bottom:7px;">GARBAGE</div>
               <div style="display:flex; flex-direction:column; gap:7px;">
                 <sc-for list="{{ selCats }}" as="g" hint-placeholder-count="1">
-                  <div style="display:flex; align-items:flex-start; gap:9px; background:#f4f5ec; border-radius:12px; padding:9px 12px;">
+                  <div style="display:flex; align-items:flex-start; gap:9px; background:var(--surface-sunken); border-radius:var(--r-btn); padding:9px 12px;">
                     <svg viewBox="0 0 24 24" width="17" height="17" style="flex:none; margin-top:1px;"><path d="{{ g.path }}" fill="{{ g.color }}"></path></svg>
                     <div style="flex:1; min-width:0;">
-                      <div style="font-size:13.5px; font-weight:800; color:#3b4038;">{{ g.jp }} · {{ g.label }}</div>
-                      <div style="font-size:12px; font-weight:700; color:#8b917f; margin-top:2px;">{{ g.note }}</div>
+                      <div style="font-size:13.5px; font-weight:800; color:var(--txt);">{{ g.jp }} · {{ g.label }}</div>
+                      <div style="font-size:var(--fs-hint); font-weight:700; color:var(--txt2); margin-top:2px;">{{ g.note }}</div>
                     </div>
                   </div>
                 </sc-for>
@@ -321,15 +347,15 @@ html.sk-measure .sk-page { height: auto !important; }
 
           <sc-if value="{{ hasSelCycles }}" hint-placeholder-val="{{ false }}">
             <div style="margin-top:16px;">
-              <div style="font-size:11px; font-weight:800; letter-spacing:0.07em; color:#a8ad9f; margin-bottom:7px;">CYCLES DUE</div>
+              <div style="font-size:var(--fs-caps); font-weight:800; letter-spacing:0.07em; color:var(--txt2); margin-bottom:7px;">CYCLES DUE</div>
               <div style="display:flex; flex-direction:column; gap:6px;">
                 <sc-for list="{{ selCycles }}" as="c" hint-placeholder-count="2">
-                  <div style="display:flex; align-items:center; gap:9px; background:#f4f5ec; border-radius:12px; padding:9px 12px;">
+                  <div style="display:flex; align-items:center; gap:9px; background:var(--surface-sunken); border-radius:var(--r-btn); padding:9px 12px;">
                     <svg viewBox="0 0 24 24" width="18" height="18" style="flex:none; display:{{ c.showG }};"><path d="{{ c.path }}" fill="{{ c.color }}"></path></svg>
                     <span style="display:{{ c.showE }}; font-size:17px; line-height:1; flex:none;">{{ c.emoji }}</span>
-                    <span style="flex:1; min-width:0; font-size:13.5px; font-weight:800; color:#3b4038;">{{ c.name }}</span>
-                    <span style="font-size:11.5px; font-weight:700; color:#a8ad9f;">{{ c.every }}</span>
-                    <span style="font-size:11px; font-weight:800; color:{{ c.warnColor }}; background:{{ c.warnBg }}; border-radius:999px; padding:3px 9px;">{{ c.warn }}</span>
+                    <span style="flex:1; min-width:0; font-size:13.5px; font-weight:800; color:var(--txt);">{{ c.name }}</span>
+                    <span style="font-size:11.5px; font-weight:700; color:var(--txt2);">{{ c.every }}</span>
+                    <span style="font-size:var(--fs-caps); font-weight:800; color:{{ c.warnColor }}; background:{{ c.warnBg }}; border-radius:var(--r-pill); padding:3px 9px;">{{ c.warn }}</span>
                   </div>
                 </sc-for>
               </div>
@@ -337,23 +363,23 @@ html.sk-measure .sk-page { height: auto !important; }
           </sc-if>
 
           <div style="margin-top:18px;">
-            <div style="font-size:11px; font-weight:800; letter-spacing:0.07em; color:#a8ad9f; margin-bottom:7px;">NOTES</div>
+            <div style="font-size:var(--fs-caps); font-weight:800; letter-spacing:0.07em; color:var(--txt2); margin-bottom:7px;">NOTES</div>
             <sc-for list="{{ selNotes }}" as="n" hint-placeholder-count="0">
-              <div style="display:flex; align-items:flex-start; gap:9px; background:#fbe9f0; border:1px solid #f2cdda; border-radius:12px; padding:9px 12px; margin-bottom:6px;">
-                <span style="font-size:11px; font-weight:800; color:#c98aa4; flex:none; margin-top:2px;">{{ n.time }}</span>
-                <span style="flex:1; min-width:0; font-size:13.5px; font-weight:700; color:#3b4038; line-height:1.5; text-wrap:pretty;">{{ n.text }}</span>
-                <span onClick="{{ delNote }}" data-id="{{ n.id }}" style="cursor:pointer; font-size:12px; font-weight:800; color:#c98aa4; flex:none;" style-hover="color:#a83e66;">✕</span>
+              <div style="display:flex; align-items:flex-start; gap:9px; background:var(--sk-danger-bg); border:1px solid color-mix(in srgb,var(--sk-danger) 25%,transparent); border-radius:var(--r-btn); padding:9px 12px; margin-bottom:6px;">
+                <span style="font-size:var(--fs-caps); font-weight:800; color:var(--sk-danger); flex:none; margin-top:2px;">{{ n.time }}</span>
+                <span style="flex:1; min-width:0; font-size:13.5px; font-weight:700; color:var(--txt); line-height:1.5; text-wrap:pretty;">{{ n.text }}</span>
+                <span onClick="{{ delNote }}" data-id="{{ n.id }}" style="cursor:pointer; font-size:var(--fs-hint); font-weight:800; color:var(--sk-danger); flex:none;" style-hover="color:var(--sk-danger);">✕</span>
               </div>
             </sc-for>
             <sc-for list="{{ selAuto }}" as="a" hint-placeholder-count="0">
               <div style="display:flex; align-items:flex-start; gap:9px; padding:6px 12px; margin-bottom:2px;">
-                <span style="font-size:11px; font-weight:800; color:#c9cfbe; flex:none; margin-top:2px;">{{ a.time }}</span>
-                <span style="flex:1; min-width:0; font-size:13px; font-weight:700; color:{{ a.color }}; line-height:1.5;">{{ a.text }}</span>
+                <span style="font-size:var(--fs-caps); font-weight:800; color:var(--txt2); flex:none; margin-top:2px;">{{ a.time }}</span>
+                <span style="flex:1; min-width:0; font-size:var(--fs-control); font-weight:700; color:{{ a.color }}; line-height:1.5;">{{ a.text }}</span>
               </div>
             </sc-for>
             <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-              <input value="{{ noteDraft }}" onChange="{{ onNoteDraft }}" placeholder="Add a line — what you cleaned, how it went..." style="flex:1; min-width:200px; font-family:'Nunito',sans-serif; font-size:13.5px; font-weight:700; color:#3b4038; background:#fff; border:1.5px solid #e0e3d6; border-radius:12px; padding:10px 13px; outline:none;" style-focus="border-color:#8aa882;">
-              <div onClick="{{ addNote }}" style="cursor:pointer; font-size:13px; font-weight:800; color:#fff; background:#5c7a58; border-radius:12px; padding:10px 20px;" style-hover="background:#4c6849;">Add</div>
+              <input value="{{ noteDraft }}" onChange="{{ onNoteDraft }}" placeholder="Add a line — what you cleaned, how it went..." style="flex:1; min-width:200px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:13.5px; font-weight:700; color:var(--txt); background:var(--input-bg); border:1.5px solid var(--border); border-radius:var(--r-btn); padding:10px 13px; outline:none;" style-focus="border-color:var(--accent);">
+              <div onClick="{{ addNote }}" style="cursor:pointer; font-size:var(--fs-control); font-weight:800; color:#fff; background:var(--btn); border-radius:var(--r-btn); padding:10px 20px;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Add</div>
             </div>
           </div>
         </div>
@@ -362,63 +388,63 @@ html.sk-measure .sk-page { height: auto !important; }
 
     <sc-if value="{{ isSettings }}" hint-placeholder-val="{{ false }}">
       <div>
-        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 4px; color:#3b4038;">Settings</h1>
-        <p style="margin:0 0 18px; font-size:14.5px; color:#7c8274; line-height:1.55; max-width:62ch; text-wrap:pretty;">Your account connects Sukkiri to your calendar and cost apps. Your location is shared with them through one record, so you only set it once.</p>
+        <h1 style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:var(--fs-modal-title); margin:0 0 4px; color:var(--txt);">Settings</h1>
+        <p style="margin:0 0 18px; font-size:14.5px; color:var(--txt2); line-height:1.55; max-width:62ch; text-wrap:pretty;">Your account connects Sukkiri to your calendar and cost apps. Your location is shared with them through one record, so you only set it once.</p>
 
-        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:20px; padding:20px 22px; margin-bottom:16px;">
-          <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:19px; color:#3b4038; margin-bottom:12px;">👤 Account &amp; sync</div>
+        <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-box); padding:20px 22px; margin-bottom:16px;">
+          <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:19px; color:var(--txt); margin-bottom:12px;">👤 Account &amp; sync</div>
           <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
             <div style="width:9px; height:9px; border-radius:50%; background:{{ cloudDot }}; flex-shrink:0;"></div>
             <div style="flex:1; min-width:170px;">
-              <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ cloudTitle }}</div>
-              <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">{{ cloudSub }}</div>
-              <div style="font-size:11px; color:#b3b8a8; font-weight:700;">Build {{ buildId }}</div>
+              <div style="font-weight:800; font-size:14.5px; color:var(--txt);">{{ cloudTitle }}</div>
+              <div style="font-size:12.5px; color:var(--txt2); font-weight:600;">{{ cloudSub }}</div>
+              <div style="font-size:var(--fs-caps); color:var(--txt2); font-weight:700;">Build {{ buildId }}</div>
             </div>
             <sc-if value="{{ cloudSignedIn }}" hint-placeholder-val="{{ false }}">
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <div onClick="{{ cloudPush }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #5c7a58; color:#5c7a58; white-space:nowrap;" style-hover="background:#e7eee4;">Back up now</div>
-                <div onClick="{{ cloudPull }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274; white-space:nowrap;" style-hover="background:#f4f5ec;">Restore</div>
-                <div onClick="{{ pushNow }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274; white-space:nowrap;" style-hover="background:#f4f5ec;">Push cycles to calendar</div>
-                <div onClick="{{ cloudOut }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:999px; color:#c98aa4; white-space:nowrap;" style-hover="color:#a83e66;">Sign out</div>
+                <div onClick="{{ cloudPush }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:var(--r-pill); border:1.5px solid var(--accent); color:var(--accent); white-space:nowrap;" style-hover="background:color-mix(in srgb,var(--accent) 10%,var(--card-bg));">Back up now</div>
+                <div onClick="{{ cloudPull }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:var(--r-pill); border:1.5px solid var(--border); color:var(--txt2); white-space:nowrap;" style-hover="background:var(--surface-sunken);">Restore</div>
+                <div onClick="{{ pushNow }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:var(--r-pill); border:1.5px solid var(--border); color:var(--txt2); white-space:nowrap;" style-hover="background:var(--surface-sunken);">Push cycles to calendar</div>
+                <div onClick="{{ cloudOut }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 14px; border-radius:var(--r-pill); color:var(--sk-danger); white-space:nowrap;" style-hover="color:var(--sk-danger);">Sign out</div>
               </div>
             </sc-if>
             <sc-if value="{{ cloudSignedOut }}" hint-placeholder-val="{{ false }}">
-              <div onClick="{{ openLogin }}" style="cursor:pointer; background:#5c7a58; color:#fff; font-size:13px; font-weight:800; padding:9px 18px; border-radius:999px; white-space:nowrap;" style-hover="background:#4a6647;">Sign in</div>
+              <div onClick="{{ openLogin }}" style="cursor:pointer; background:var(--btn); color:#fff; font-size:var(--fs-control); font-weight:800; padding:9px 18px; border-radius:var(--r-pill); white-space:nowrap;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Sign in</div>
             </sc-if>
           </div>
         </div>
 
-        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:20px; padding:20px 22px;">
-          <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:19px; color:#3b4038; margin-bottom:4px;">📍 Location</div>
-          <div style="font-size:13px; font-weight:700; color:{{ locStatusColor }}; background:{{ locStatusBg }}; border-radius:12px; padding:10px 13px; margin:10px 0 16px; line-height:1.5;">{{ locStatus }}</div>
+        <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-box); padding:20px 22px;">
+          <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:19px; color:var(--txt); margin-bottom:4px;">📍 Location</div>
+          <div style="font-size:var(--fs-control); font-weight:700; color:{{ locStatusColor }}; background:{{ locStatusBg }}; border-radius:var(--r-btn); padding:10px 13px; margin:10px 0 16px; line-height:1.5;">{{ locStatus }}</div>
 
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:12px;">
             <div>
-              <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:5px;">LABEL</div>
-              <input value="{{ locLabel }}" onChange="{{ onLocLabel }}" placeholder="Saitama-shi, Minami-ku" style="width:100%; box-sizing:border-box; font-family:'Nunito',sans-serif; font-size:13.5px; font-weight:700; color:#3b4038; background:#fff; border:1.5px solid #e0e3d6; border-radius:12px; padding:10px 13px; outline:none;" style-focus="border-color:#8aa882;">
+              <div style="font-size:var(--fs-caps); font-weight:800; letter-spacing:0.06em; color:var(--txt2); margin-bottom:5px;">LABEL</div>
+              <input value="{{ locLabel }}" onChange="{{ onLocLabel }}" placeholder="Saitama-shi, Minami-ku" style="width:100%; box-sizing:border-box; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:13.5px; font-weight:700; color:var(--txt); background:var(--input-bg); border:1.5px solid var(--border); border-radius:var(--r-btn); padding:10px 13px; outline:none;" style-focus="border-color:var(--accent);">
             </div>
             <div>
-              <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:5px;">WARD (DRIVES GARBAGE RULES)</div>
-              <input value="{{ locWard }}" onChange="{{ onLocWard }}" placeholder="Minami-ku" style="width:100%; box-sizing:border-box; font-family:'Nunito',sans-serif; font-size:13.5px; font-weight:700; color:#3b4038; background:#fff; border:1.5px solid #e0e3d6; border-radius:12px; padding:10px 13px; outline:none;" style-focus="border-color:#8aa882;">
+              <div style="font-size:var(--fs-caps); font-weight:800; letter-spacing:0.06em; color:var(--txt2); margin-bottom:5px;">WARD (DRIVES GARBAGE RULES)</div>
+              <input value="{{ locWard }}" onChange="{{ onLocWard }}" placeholder="Minami-ku" style="width:100%; box-sizing:border-box; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:13.5px; font-weight:700; color:var(--txt); background:var(--input-bg); border:1.5px solid var(--border); border-radius:var(--r-btn); padding:10px 13px; outline:none;" style-focus="border-color:var(--accent);">
             </div>
             <div>
-              <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:5px;">LATITUDE</div>
-              <input value="{{ locLat }}" onChange="{{ onLocLat }}" placeholder="35.8617" style="width:100%; box-sizing:border-box; font-family:'Nunito',sans-serif; font-size:13.5px; font-weight:700; color:#3b4038; background:#fff; border:1.5px solid #e0e3d6; border-radius:12px; padding:10px 13px; outline:none;" style-focus="border-color:#8aa882;">
+              <div style="font-size:var(--fs-caps); font-weight:800; letter-spacing:0.06em; color:var(--txt2); margin-bottom:5px;">LATITUDE</div>
+              <input value="{{ locLat }}" onChange="{{ onLocLat }}" placeholder="35.8617" style="width:100%; box-sizing:border-box; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:13.5px; font-weight:700; color:var(--txt); background:var(--input-bg); border:1.5px solid var(--border); border-radius:var(--r-btn); padding:10px 13px; outline:none;" style-focus="border-color:var(--accent);">
             </div>
             <div>
-              <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:5px;">LONGITUDE</div>
-              <input value="{{ locLon }}" onChange="{{ onLocLon }}" placeholder="139.6455" style="width:100%; box-sizing:border-box; font-family:'Nunito',sans-serif; font-size:13.5px; font-weight:700; color:#3b4038; background:#fff; border:1.5px solid #e0e3d6; border-radius:12px; padding:10px 13px; outline:none;" style-focus="border-color:#8aa882;">
+              <div style="font-size:var(--fs-caps); font-weight:800; letter-spacing:0.06em; color:var(--txt2); margin-bottom:5px;">LONGITUDE</div>
+              <input value="{{ locLon }}" onChange="{{ onLocLon }}" placeholder="139.6455" style="width:100%; box-sizing:border-box; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:13.5px; font-weight:700; color:var(--txt); background:var(--input-bg); border:1.5px solid var(--border); border-radius:var(--r-btn); padding:10px 13px; outline:none;" style-focus="border-color:var(--accent);">
             </div>
             <div>
-              <div style="font-size:11px; font-weight:800; letter-spacing:0.06em; color:#a8ad9f; margin-bottom:5px;">TIMEZONE</div>
-              <input value="{{ locTz }}" onChange="{{ onLocTz }}" placeholder="Asia/Tokyo" style="width:100%; box-sizing:border-box; font-family:'Nunito',sans-serif; font-size:13.5px; font-weight:700; color:#3b4038; background:#fff; border:1.5px solid #e0e3d6; border-radius:12px; padding:10px 13px; outline:none;" style-focus="border-color:#8aa882;">
+              <div style="font-size:var(--fs-caps); font-weight:800; letter-spacing:0.06em; color:var(--txt2); margin-bottom:5px;">TIMEZONE</div>
+              <input value="{{ locTz }}" onChange="{{ onLocTz }}" placeholder="Asia/Tokyo" style="width:100%; box-sizing:border-box; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:13.5px; font-weight:700; color:var(--txt); background:var(--input-bg); border:1.5px solid var(--border); border-radius:var(--r-btn); padding:10px 13px; outline:none;" style-focus="border-color:var(--accent);">
             </div>
           </div>
 
           <sc-if value="{{ locEditable }}" hint-placeholder-val="{{ true }}">
-            <div onClick="{{ saveLoc }}" style="display:inline-block; cursor:pointer; margin-top:16px; font-size:13.5px; font-weight:800; color:#fff; background:#5c7a58; border-radius:12px; padding:11px 22px;" style-hover="background:#4c6849;">Save location & refresh weather</div>
+            <div onClick="{{ saveLoc }}" style="display:inline-block; cursor:pointer; margin-top:16px; font-size:13.5px; font-weight:800; color:#fff; background:var(--btn); border-radius:var(--r-btn); padding:11px 22px;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Save location & refresh weather</div>
           </sc-if>
-          <div style="font-size:12.5px; font-weight:700; color:#a8ad9f; margin-top:12px;">{{ wxUpdated }} · shared under <code>app_location</code>, owner: {{ locOwner }}</div>
+          <div style="font-size:12.5px; font-weight:700; color:var(--txt2); margin-top:12px;">{{ wxUpdated }} · shared under <code>app_location</code>, owner: {{ locOwner }}</div>
         </div>
       </div>
     </sc-if>
@@ -426,23 +452,23 @@ html.sk-measure .sk-page { height: auto !important; }
     <sc-if value="{{ isToday }}" hint-placeholder-val="{{ true }}">
       <div>
         <div style="display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
-          <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0; color:#3b4038;">Today's tasks</h1>
-          <div style="font-size:13.5px; color:#8b917f; font-weight:700;">{{ todayLabel }}</div>
+          <h1 style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:var(--fs-modal-title); margin:0; color:var(--txt);">Today's tasks</h1>
+          <div style="font-size:13.5px; color:var(--txt2); font-weight:700;">{{ todayLabel }}</div>
         </div>
-        <div style="position:relative; overflow:hidden; background:#e7eee4; border:1px solid #d5dfcf; border-radius:22px; padding:24px 26px; margin:14px 0 18px; display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
-          <div style="position:absolute; top:-34px; right:-24px; width:140px; height:140px; border-radius:50%; background:#fbe9f0; opacity:0.8; animation:floaty 7s ease-in-out infinite;"></div>
-          <div style="position:absolute; bottom:-26px; right:120px; width:80px; height:80px; border-radius:50%; background:#f7edd8; opacity:0.85; animation:floaty2 9s ease-in-out infinite;"></div>
+        <div style="position:relative; overflow:hidden; background:color-mix(in srgb,var(--accent) 10%,var(--card-bg)); border:1px solid color-mix(in srgb,var(--accent) 28%,transparent); border-radius:var(--r-box); padding:24px 26px; margin:14px 0 18px; display:flex; align-items:center; gap:24px; flex-wrap:wrap;">
+          <div style="position:absolute; top:-34px; right:-24px; width:140px; height:140px; border-radius:50%; background:var(--sk-danger-bg); opacity:0.8; animation:floaty 7s ease-in-out infinite;"></div>
+          <div style="position:absolute; bottom:-26px; right:120px; width:80px; height:80px; border-radius:50%; background:var(--sk-warn-bg); opacity:0.85; animation:floaty2 9s ease-in-out infinite;"></div>
           <div style="position:absolute; top:18px; right:190px; width:26px; height:26px; border-radius:50%; background:#cfe0c8; animation:floaty 5s ease-in-out infinite;"></div>
-          <div style="position:absolute; bottom:14px; left:38%; width:14px; height:14px; border-radius:50%; background:#f2cdda; animation:floaty2 6s ease-in-out infinite;"></div>
+          <div style="position:absolute; bottom:14px; left:38%; width:14px; height:14px; border-radius:50%; background:color-mix(in srgb,var(--sk-danger) 25%,transparent); animation:floaty2 6s ease-in-out infinite;"></div>
           <div style="position:relative; width:104px; height:104px; border-radius:50%; background:conic-gradient({{ ringGrad }}); display:flex; align-items:center; justify-content:center; transition:background 0.6s;">
-            <div style="width:82px; height:82px; border-radius:50%; background:#fcfcf9; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-              <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:26px; color:#3f5540; line-height:1;">{{ health }}</div>
-              <div style="font-size:9.5px; font-weight:800; color:#9aa08e; letter-spacing:0.08em;">HEALTH</div>
+            <div style="width:82px; height:82px; border-radius:50%; background:var(--card-bg); display:flex; flex-direction:column; align-items:center; justify-content:center;">
+              <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:26px; color:var(--txt); line-height:1;">{{ health }}</div>
+              <div style="font-size:9.5px; font-weight:800; color:var(--txt2); letter-spacing:0.08em;">HEALTH</div>
             </div>
           </div>
           <div style="position:relative; flex:1; min-width:220px;">
-            <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:19px; color:#3f5540; margin-bottom:4px;">{{ heroTitle }}</div>
-            <div style="font-size:14px; color:#68705f; font-weight:600; max-width:420px;">{{ coachMsg }}</div>
+            <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:19px; color:var(--txt); margin-bottom:4px;">{{ heroTitle }}</div>
+            <div style="font-size:var(--fs-stats); color:var(--txt); font-weight:600; max-width:420px;">{{ coachMsg }}</div>
           </div>
           <svg viewBox="0 0 230 150" width="230" style="position:relative; flex-shrink:0; max-width:100%; height:auto; animation:floaty 6s ease-in-out infinite;">
             <ellipse cx="115" cy="136" rx="100" ry="10" fill="#dbe3d4"></ellipse>
@@ -476,35 +502,35 @@ html.sk-measure .sk-page { height: auto !important; }
 
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px; margin-bottom:16px;">
           <sc-for list="{{ statCards }}" as="st" hint-placeholder-count="3">
-            <div onClick="{{ goNav }}" data-id="{{ st.nav }}" style="display:flex; align-items:center; gap:12px; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 16px; cursor:pointer; transition:transform 0.18s, box-shadow 0.18s;" style-hover="transform:translateY(-2px); box-shadow:0 8px 18px rgba(59,64,56,0.09);">
-              <div style="width:40px; height:40px; border-radius:13px; background:{{ st.iconBg }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <div onClick="{{ goNav }}" data-id="{{ st.nav }}" style="display:flex; align-items:center; gap:12px; background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-card); padding:14px 16px; cursor:pointer; transition:transform 0.18s, box-shadow 0.18s;" style-hover="transform:translateY(-2px); box-shadow:0 8px 18px var(--sk-shadow-c);">
+              <div style="width:40px; height:40px; border-radius:var(--r-panel); background:{{ st.iconBg }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                 <svg viewBox="0 0 24 24" width="21" height="21"><path d="{{ st.icon }}" fill="{{ st.color }}" fill-rule="evenodd"></path></svg>
               </div>
               <div>
-                <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:21px; color:{{ st.color }}; line-height:1.1;">{{ st.value }}</div>
-                <div style="font-size:12px; font-weight:700; color:#9aa08e; margin-top:3px;">{{ st.label }}</div>
+                <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:21px; color:{{ st.color }}; line-height:1.1;">{{ st.value }}</div>
+                <div style="font-size:var(--fs-hint); font-weight:700; color:var(--txt2); margin-top:3px;">{{ st.label }}</div>
               </div>
             </div>
           </sc-for>
         </div>
 
         <sc-if value="{{ hasRisk }}" hint-placeholder-val="{{ false }}">
-          <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:18px; padding:16px 18px; margin-bottom:16px;">
+          <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-card); padding:16px 18px; margin-bottom:16px;">
             <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-              <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:17px; color:#3b4038; white-space:nowrap;">⚑ {{ riskTitle }}</div>
-              <div style="font-size:12.5px; font-weight:700; color:#9aa08e; flex:1; min-width:200px;">{{ riskSub }}</div>
+              <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:17px; color:var(--txt); white-space:nowrap;">⚑ {{ riskTitle }}</div>
+              <div style="font-size:12.5px; font-weight:700; color:var(--txt2); flex:1; min-width:200px;">{{ riskSub }}</div>
             </div>
             <div style="display:flex; flex-direction:column; gap:8px;">
               <sc-for list="{{ riskItems }}" as="rk" hint-placeholder-count="2">
-                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:{{ rk.bg }}; border:1px solid {{ rk.border }}; border-radius:14px; padding:11px 14px;">
+                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:{{ rk.bg }}; border:1px solid {{ rk.border }}; border-radius:var(--r-panel); padding:11px 14px;">
                   <div style="width:8px; height:8px; border-radius:50%; background:{{ rk.dot }}; flex-shrink:0;"></div>
                   <div style="font-size:10px; font-weight:900; letter-spacing:0.08em; color:{{ rk.color }}; white-space:nowrap;">{{ rk.tag }}</div>
                   <div style="flex:1; min-width:190px;">
-                    <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ rk.name }}</div>
-                    <div style="font-size:12.5px; font-weight:600; color:#68705f; line-height:1.4;">{{ rk.why }}</div>
+                    <div style="font-weight:800; font-size:14.5px; color:var(--txt);">{{ rk.name }}</div>
+                    <div style="font-size:12.5px; font-weight:600; color:var(--txt); line-height:1.4;">{{ rk.why }}</div>
                   </div>
-                  <div onClick="{{ riskAct }}" data-id="{{ rk.id }}" data-kind="{{ rk.actKind }}" data-to="{{ rk.to }}" style="cursor:pointer; background:{{ rk.color }}; color:#fff; font-weight:800; font-size:12.5px; padding:9px 16px; border-radius:999px; white-space:nowrap;" style-hover="filter:brightness(1.1);">{{ rk.act }}</div>
-                  <div onClick="{{ riskSnooze }}" data-id="{{ rk.id }}" data-sev="{{ rk.sev }}" title="Hide this flag for a week" style="cursor:pointer; font-size:12.5px; font-weight:800; color:#a8ad9f;" style-hover="color:#7c8274;">Snooze</div>
+                  <div onClick="{{ riskAct }}" data-id="{{ rk.id }}" data-kind="{{ rk.actKind }}" data-to="{{ rk.to }}" style="cursor:pointer; background:{{ rk.color }}; color:#fff; font-weight:800; font-size:12.5px; padding:9px 16px; border-radius:var(--r-pill); white-space:nowrap;" style-hover="filter:brightness(1.1);">{{ rk.act }}</div>
+                  <div onClick="{{ riskSnooze }}" data-id="{{ rk.id }}" data-sev="{{ rk.sev }}" title="Hide this flag for a week" style="cursor:pointer; font-size:12.5px; font-weight:800; color:var(--txt2);" style-hover="color:var(--txt2);">Snooze</div>
                 </div>
               </sc-for>
             </div>
@@ -512,194 +538,194 @@ html.sk-measure .sk-page { height: auto !important; }
         </sc-if>
 
         <sc-if value="{{ hasGarbReminder }}" hint-placeholder-val="{{ false }}">
-          <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:{{ garbReminderBg }}; border:1px solid {{ garbReminderBorder }}; border-radius:16px; padding:14px 18px; margin-bottom:16px;">
+          <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:{{ garbReminderBg }}; border:1px solid {{ garbReminderBorder }}; border-radius:var(--r-card); padding:14px 18px; margin-bottom:16px;">
             <div style="font-size:20px;">🗑</div>
             <div style="flex:1; min-width:180px;">
-              <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:16px; color:{{ garbReminderColor }};">{{ garbReminderJp }}</div>
-              <div style="font-size:13.5px; color:#7c8274; font-weight:600;">{{ garbReminder }}</div>
+              <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:var(--fs-label); color:{{ garbReminderColor }};">{{ garbReminderJp }}</div>
+              <div style="font-size:13.5px; color:var(--txt2); font-weight:600;">{{ garbReminder }}</div>
             </div>
-            <div onClick="{{ goNav }}" data-id="garbage" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 14px; border-radius:999px; border:1.5px solid {{ garbReminderColor }}; color:{{ garbReminderColor }}; white-space:nowrap;">All collection days</div>
+            <div onClick="{{ goNav }}" data-id="garbage" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 14px; border-radius:var(--r-pill); border:1.5px solid {{ garbReminderColor }}; color:{{ garbReminderColor }}; white-space:nowrap;">All collection days</div>
           </div>
         </sc-if>
 
         <sc-if value="{{ checkinDue }}" hint-placeholder-val="{{ false }}">
-          <div style="display:flex; align-items:center; gap:14px; background:#e7eee4; border:1px solid #cfdcc9; border-radius:16px; padding:16px 18px; margin-bottom:16px;">
-            <div style="width:46px; height:46px; border-radius:15px; background:#fcfcf9; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-              <svg viewBox="0 0 24 24" width="24" height="24"><path d="M9 4 h6 l1.6 2.5 H20 a2 2 0 0 1 2 2 V18 a2 2 0 0 1 -2 2 H4 a2 2 0 0 1 -2 -2 V8.5 a2 2 0 0 1 2 -2 h3.4 Z M12 9 a4.2 4.2 0 1 0 0 8.4 a4.2 4.2 0 0 0 0 -8.4 Z" fill="#3f5540" fill-rule="evenodd"></path></svg>
+          <div style="display:flex; align-items:center; gap:14px; background:color-mix(in srgb,var(--accent) 10%,var(--card-bg)); border:1px solid color-mix(in srgb,var(--accent) 28%,transparent); border-radius:var(--r-card); padding:16px 18px; margin-bottom:16px;">
+            <div style="width:46px; height:46px; border-radius:var(--r-panel); background:var(--card-bg); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <svg viewBox="0 0 24 24" width="24" height="24"><path d="M9 4 h6 l1.6 2.5 H20 a2 2 0 0 1 2 2 V18 a2 2 0 0 1 -2 2 H4 a2 2 0 0 1 -2 -2 V8.5 a2 2 0 0 1 2 -2 h3.4 Z M12 9 a4.2 4.2 0 1 0 0 8.4 a4.2 4.2 0 0 0 0 -8.4 Z" fill="var(--accent)" fill-rule="evenodd"></path></svg>
             </div>
             <div style="flex:1;">
-              <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:16px; color:#3f5540;">Weekly photo check-in</div>
-              <div style="font-size:13px; color:#7c8274; font-weight:600;">{{ checkinDueLabel }}</div>
+              <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:var(--fs-label); color:var(--txt);">Weekly photo check-in</div>
+              <div style="font-size:var(--fs-control); color:var(--txt2); font-weight:600;">{{ checkinDueLabel }}</div>
             </div>
-            <div onClick="{{ goCheckin }}" style="background:#d95c8a; color:#fff; font-weight:800; font-size:13.5px; padding:10px 18px; border-radius:999px; cursor:pointer; white-space:nowrap;" style-hover="background:#c74a78;">Start check-in</div>
+            <div onClick="{{ goCheckin }}" style="background:var(--sk-accent); color:#fff; font-weight:800; font-size:13.5px; padding:10px 18px; border-radius:var(--r-pill); cursor:pointer; white-space:nowrap;" style-hover="background:var(--sk-accent-dk);">Start check-in</div>
           </div>
         </sc-if>
 
         <sc-if value="{{ hasNextHoliday }}" hint-placeholder-val="{{ false }}">
-          <div style="display:flex; align-items:center; gap:14px; background:#fdf5f8; border:1px solid #f2cdda; border-radius:16px; padding:16px 18px; margin-bottom:16px;">
+          <div style="display:flex; align-items:center; gap:14px; background:color-mix(in srgb,var(--sk-accent) 4%,var(--card-bg)); border:1px solid color-mix(in srgb,var(--sk-danger) 25%,transparent); border-radius:var(--r-card); padding:16px 18px; margin-bottom:16px;">
             <div style="flex:1;">
-              <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:16px; color:#a83e66;">Deep clean: {{ nextHolName }}</div>
-              <div style="font-size:13px; color:#7c8274; font-weight:600;">{{ nextHolLabel }}</div>
+              <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:var(--fs-label); color:var(--sk-danger);">Deep clean: {{ nextHolName }}</div>
+              <div style="font-size:var(--fs-control); color:var(--txt2); font-weight:600;">{{ nextHolLabel }}</div>
             </div>
-            <div onClick="{{ goDeep }}" style="background:#fff; border:1.5px solid #d95c8a; color:#d95c8a; font-weight:800; font-size:13.5px; padding:9px 18px; border-radius:999px; cursor:pointer; white-space:nowrap;" style-hover="background:#fbe9f0;">View plan</div>
+            <div onClick="{{ goDeep }}" style="background:#fff; border:1.5px solid var(--sk-accent); color:var(--sk-accent); font-weight:800; font-size:13.5px; padding:9px 18px; border-radius:var(--r-pill); cursor:pointer; white-space:nowrap;" style-hover="background:var(--sk-danger-bg);">View plan</div>
           </div>
         </sc-if>
 
         <div style="display:flex; flex-direction:column; gap:10px;">
           <sc-for list="{{ todayTasks }}" as="t" hint-placeholder-count="3">
-            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 18px; transition:transform 0.18s, box-shadow 0.18s;" style-hover="transform:translateY(-2px); box-shadow:0 8px 20px rgba(59,64,56,0.09);">
-              <div style="width:42px; height:42px; border-radius:14px; background:{{ t.iconBg }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-card); padding:14px 18px; transition:transform 0.18s, box-shadow 0.18s;" style-hover="transform:translateY(-2px); box-shadow:0 8px 20px var(--sk-shadow-c);">
+              <div style="width:42px; height:42px; border-radius:var(--r-panel); background:{{ t.iconBg }}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                 <svg viewBox="0 0 24 24" width="22" height="22"><path d="{{ t.icon }}" fill="{{ t.iconColor }}" fill-rule="evenodd"></path></svg>
               </div>
               <div style="flex:1; min-width:160px;">
-                <div style="font-weight:800; font-size:15.5px; color:#3b4038;">{{ t.name }}</div>
-                <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">{{ t.sub }}</div>
+                <div style="font-weight:800; font-size:15.5px; color:var(--txt);">{{ t.name }}</div>
+                <div style="font-size:12.5px; color:var(--txt2); font-weight:600;">{{ t.sub }}</div>
                 <sc-if value="{{ t.hasDry }}" hint-placeholder-val="{{ false }}">
-                  <div style="display:inline-flex; align-items:center; gap:7px; margin-top:6px; background:{{ t.dryBg }}; border-radius:999px; padding:4px 11px;">
+                  <div style="display:inline-flex; align-items:center; gap:7px; margin-top:6px; background:{{ t.dryBg }}; border-radius:var(--r-pill); padding:4px 11px;">
                     <span style="font-size:11.5px; font-weight:800; color:{{ t.dryColor }};">{{ t.dryFlag }}</span>
                     <span style="font-size:11.5px; font-weight:700; color:{{ t.dryColor }}; opacity:0.85;">{{ t.dryFix }}</span>
                   </div>
                 </sc-if>
               </div>
-              <div style="font-size:12.5px; font-weight:800; padding:5px 12px; border-radius:999px; background:{{ t.chipBg }}; color:{{ t.chipColor }}; white-space:nowrap;">{{ t.dueLabel }}</div>
-              <div onClick="{{ toggleWk }}" data-id="{{ t.id }}" title="Weekend-only or any day" style="cursor:pointer; font-size:11.5px; font-weight:800; padding:5px 11px; border-radius:999px; border:1.5px solid {{ t.wkBorder }}; background:{{ t.wkBg }}; color:{{ t.wkColor }}; white-space:nowrap;">{{ t.wkMark }}</div>
-              <div onClick="{{ openPick }}" data-id="{{ t.id }}" title="Start a timer for this — pick how long" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 13px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274; white-space:nowrap;" style-hover="border-color:#5c7a58; color:#5c7a58;">⏱ Timer</div>
-              <div onClick="{{ markDone }}" data-id="{{ t.id }}" style="background:#3f5540; color:#fff; font-weight:800; font-size:13px; padding:9px 16px; border-radius:999px; cursor:pointer; white-space:nowrap;" style-hover="background:#2e4030;">Mark done +10</div>
-              <div onClick="{{ deleteCycle }}" data-id="{{ t.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800; padding:4px;" style-hover="color:#d95c8a;">✕</div>
+              <div style="font-size:12.5px; font-weight:800; padding:5px 12px; border-radius:var(--r-pill); background:{{ t.chipBg }}; color:{{ t.chipColor }}; white-space:nowrap;">{{ t.dueLabel }}</div>
+              <div onClick="{{ toggleWk }}" data-id="{{ t.id }}" title="Weekend-only or any day" style="cursor:pointer; font-size:11.5px; font-weight:800; padding:5px 11px; border-radius:var(--r-pill); border:1.5px solid {{ t.wkBorder }}; background:{{ t.wkBg }}; color:{{ t.wkColor }}; white-space:nowrap;">{{ t.wkMark }}</div>
+              <div onClick="{{ openPick }}" data-id="{{ t.id }}" title="Start a timer for this — pick how long" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 13px; border-radius:var(--r-pill); border:1.5px solid var(--border); color:var(--txt2); white-space:nowrap;" style-hover="border-color:var(--accent); color:var(--accent);">⏱ Timer</div>
+              <div onClick="{{ markDone }}" data-id="{{ t.id }}" style="background:var(--btn); color:#fff; font-weight:800; font-size:var(--fs-control); padding:9px 16px; border-radius:var(--r-pill); cursor:pointer; white-space:nowrap;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Mark done +10</div>
+              <div onClick="{{ deleteCycle }}" data-id="{{ t.id }}" style="color:var(--txt2); cursor:pointer; font-weight:800; padding:4px;" style-hover="color:var(--sk-accent);">✕</div>
               <sc-if value="{{ t.picking }}" hint-placeholder-val="{{ false }}">
-                <div style="flex-basis:100%; display:flex; align-items:center; gap:8px; flex-wrap:wrap; border-top:1px dashed #e0e3d6; padding-top:11px; margin-top:2px;">
-                  <div style="font-size:12px; font-weight:800; color:#9aa08e; letter-spacing:0.04em;">HOW LONG?</div>
+                <div style="flex-basis:100%; display:flex; align-items:center; gap:8px; flex-wrap:wrap; border-top:1px dashed color-mix(in srgb,var(--border) 30%,transparent); padding-top:11px; margin-top:2px;">
+                  <div style="font-size:var(--fs-hint); font-weight:800; color:var(--txt2); letter-spacing:0.04em;">HOW LONG?</div>
                   <sc-for list="{{ t.pickOpts }}" as="po" hint-placeholder-count="8">
-                    <div onClick="{{ startCycleTimer }}" data-id="{{ t.id }}" data-mins="{{ po.mins }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 13px; border-radius:999px; border:1.5px solid {{ po.border }}; background:{{ po.bg }}; color:{{ po.color }}; white-space:nowrap;" style-hover="border-color:#5c7a58; color:#3f5540;">{{ po.label }}</div>
+                    <div onClick="{{ startCycleTimer }}" data-id="{{ t.id }}" data-mins="{{ po.mins }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:7px 13px; border-radius:var(--r-pill); border:1.5px solid {{ po.border }}; background:{{ po.bg }}; color:{{ po.color }}; white-space:nowrap;" style-hover="border-color:var(--accent); color:var(--txt);">{{ po.label }}</div>
                   </sc-for>
-                  <div style="font-size:11.5px; font-weight:700; color:#a8ad9f;">· suggested for this job</div>
+                  <div style="font-size:11.5px; font-weight:700; color:var(--txt2);">· suggested for this job</div>
                 </div>
               </sc-if>
             </div>
           </sc-for>
         </div>
 
-        <div style="margin-top:22px; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:18px; padding:16px 18px;">
+        <div style="margin-top:22px; background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-card); padding:16px 18px;">
           <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;">
-            <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:17px; color:#3b4038; white-space:nowrap;">⏱ Cleaning timer</div>
+            <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:17px; color:var(--txt); white-space:nowrap;">⏱ Cleaning timer</div>
             <div style="font-size:12.5px; font-weight:700; color:{{ timerSyncColor }}; flex:1; min-width:200px;">{{ timerSync }}</div>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin:13px 0;">
             <sc-for list="{{ timerPresets }}" as="pr" hint-placeholder-count="6">
-              <div onClick="{{ startPreset }}" data-label="{{ pr.label }}" data-mins="{{ pr.mins }}" style="cursor:pointer; font-size:13px; font-weight:800; padding:9px 15px; border-radius:999px; border:1.5px solid #cfdcc9; background:#e7eee4; color:#3f5540; white-space:nowrap;" style-hover="background:#d9e4d4;">{{ pr.chip }}</div>
+              <div onClick="{{ startPreset }}" data-label="{{ pr.label }}" data-mins="{{ pr.mins }}" style="cursor:pointer; font-size:var(--fs-control); font-weight:800; padding:9px 15px; border-radius:var(--r-pill); border:1.5px solid color-mix(in srgb,var(--accent) 28%,transparent); background:color-mix(in srgb,var(--accent) 10%,var(--card-bg)); color:var(--txt); white-space:nowrap;" style-hover="background:var(--sk-ok-bg);">{{ pr.chip }}</div>
             </sc-for>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <input value="{{ form.timerLabel }}" data-field="timerLabel" onChange="{{ onField }}" placeholder="Something else — e.g. Soaking socks" style="flex:2; min-width:190px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-            <input value="{{ form.timerMins }}" data-field="timerMins" onChange="{{ onField }}" type="number" min="1" max="600" placeholder="min" style="width:90px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-            <div onClick="{{ startCustom }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:#4a6647;">Start timer</div>
+            <input value="{{ form.timerLabel }}" data-field="timerLabel" onChange="{{ onField }}" placeholder="Something else — e.g. Soaking socks" style="flex:2; min-width:190px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+            <input value="{{ form.timerMins }}" data-field="timerMins" onChange="{{ onField }}" type="number" min="1" max="600" placeholder="min" style="width:90px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+            <div onClick="{{ startCustom }}" style="background:var(--btn); color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:var(--r-pill); cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Start timer</div>
           </div>
-          <div style="font-size:12px; color:#a8ad9f; font-weight:600; margin-top:9px;">Only the finish time is stored, so a timer survives a closed tab — and shows up on every device you're signed in on.</div>
+          <div style="font-size:var(--fs-hint); color:var(--txt2); font-weight:600; margin-top:9px;">Only the finish time is stored, so a timer survives a closed tab — and shows up on every device you're signed in on.</div>
         </div>
 
-        <div style="margin-top:22px; background:#fcfcf9; border:1px dashed #cfd4c2; border-radius:16px; padding:16px 18px;">
-          <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:10px;">Add a cleaning cycle</div>
+        <div style="margin-top:22px; background:var(--card-bg); border:1px dashed var(--border); border-radius:var(--r-card); padding:16px 18px;">
+          <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:var(--fs-input); color:var(--txt); margin-bottom:10px;">Add a cleaning cycle</div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <input value="{{ form.cycleName }}" data-field="cycleName" onChange="{{ onField }}" placeholder="e.g. Bathroom scrub" style="flex:2; min-width:180px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-            <input value="{{ form.cycleDays }}" data-field="cycleDays" onChange="{{ onField }}" type="number" min="1" placeholder="days" style="width:90px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-            <div onClick="{{ addCycle }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:#4a6647;">Add cycle</div>
+            <input value="{{ form.cycleName }}" data-field="cycleName" onChange="{{ onField }}" placeholder="e.g. Bathroom scrub" style="flex:2; min-width:180px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+            <input value="{{ form.cycleDays }}" data-field="cycleDays" onChange="{{ onField }}" type="number" min="1" placeholder="days" style="width:90px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+            <div onClick="{{ addCycle }}" style="background:var(--btn); color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:var(--r-pill); cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Add cycle</div>
           </div>
-          <div style="font-size:12px; color:#a8ad9f; font-weight:600; margin-top:8px;">Cycles regenerate automatically each time you mark them done.</div>
+          <div style="font-size:var(--fs-hint); color:var(--txt2); font-weight:600; margin-top:8px;">Cycles regenerate automatically each time you mark them done.</div>
         </div>
       </div>
     </sc-if>
 
     <sc-if value="{{ isCheckin }}" hint-placeholder-val="{{ false }}">
       <div>
-        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Photo check-in</h1>
-        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">{{ checkinIntro }}</div>
+        <h1 style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:var(--fs-modal-title); margin:0 0 6px; color:var(--txt);">Photo check-in</h1>
+        <div style="font-size:14.5px; color:var(--txt2); font-weight:600; margin-bottom:22px;">{{ checkinIntro }}</div>
         <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:14px;">
           <sc-for list="{{ areasView }}" as="ar" hint-placeholder-count="5">
-            <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px;">
-              <div style="font-weight:800; font-size:15px; color:#3b4038; margin-bottom:10px;">{{ ar.name }}</div>
+            <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-card); padding:14px;">
+              <div style="font-weight:800; font-size:var(--fs-input); color:var(--txt); margin-bottom:10px;">{{ ar.name }}</div>
               <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
                 <div>
-                  <div style="font-size:11px; font-weight:800; color:#5c7a58; letter-spacing:0.06em; margin-bottom:6px;">IDEAL STATE</div>
+                  <div style="font-size:var(--fs-caps); font-weight:800; color:var(--accent); letter-spacing:0.06em; margin-bottom:6px;">IDEAL STATE</div>
                   <sc-if value="{{ ar.hasIdeal }}" hint-placeholder-val="{{ false }}">
-                    <div onClick="{{ pickPhoto }}" data-area="{{ ar.id }}" data-kind="ideal" title="Locked — click to request replacement" style="cursor:pointer; position:relative; border-radius:10px; height:110px; border:2px solid #5c7a58; background-image:{{ ar.idealBg }}; background-size:cover; background-position:center;">
-                      <div style="position:absolute; bottom:6px; left:6px; background:rgba(63,85,64,0.88); color:#fff; font-size:10px; font-weight:800; padding:3px 9px; border-radius:999px; letter-spacing:0.06em;">LOCKED</div>
+                    <div onClick="{{ pickPhoto }}" data-area="{{ ar.id }}" data-kind="ideal" title="Locked — click to request replacement" style="cursor:pointer; position:relative; border-radius:var(--r-input); height:110px; border:2px solid var(--accent); background-image:{{ ar.idealBg }}; background-size:cover; background-position:center;">
+                      <div style="position:absolute; bottom:6px; left:6px; background:color-mix(in srgb,var(--txt) 88%,transparent); color:#fff; font-size:10px; font-weight:800; padding:3px 9px; border-radius:var(--r-pill); letter-spacing:0.06em;">LOCKED</div>
                     </div>
                   </sc-if>
                   <sc-if value="{{ ar.noIdeal }}" hint-placeholder-val="{{ true }}">
-                    <div onClick="{{ pickPhoto }}" data-area="{{ ar.id }}" data-kind="ideal" style="cursor:pointer; height:110px; border:1.5px dashed #cfd4c2; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; color:#9aa08e; text-align:center; padding:6px; background:#f6f7f0;" style-hover="border-color:#5c7a58; color:#5c7a58;">＋ Add ideal photo</div>
+                    <div onClick="{{ pickPhoto }}" data-area="{{ ar.id }}" data-kind="ideal" style="cursor:pointer; height:110px; border:1.5px dashed var(--border); border-radius:var(--r-input); display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; color:var(--txt2); text-align:center; padding:6px; background:var(--surface-sunken);" style-hover="border-color:var(--accent); color:var(--accent);">＋ Add ideal photo</div>
                   </sc-if>
                 </div>
                 <div>
-                  <div style="font-size:11px; font-weight:800; color:#d95c8a; letter-spacing:0.06em; margin-bottom:6px;">THIS WEEK</div>
+                  <div style="font-size:var(--fs-caps); font-weight:800; color:var(--sk-accent); letter-spacing:0.06em; margin-bottom:6px;">THIS WEEK</div>
                   <sc-if value="{{ ar.hasCurrent }}" hint-placeholder-val="{{ false }}">
-                    <div onClick="{{ pickPhoto }}" data-area="{{ ar.id }}" data-kind="current" title="Click to replace" style="cursor:pointer; border-radius:10px; height:110px; border:1px solid #dde0d1; background-image:{{ ar.currentBg }}; background-size:cover; background-position:center;"></div>
+                    <div onClick="{{ pickPhoto }}" data-area="{{ ar.id }}" data-kind="current" title="Click to replace" style="cursor:pointer; border-radius:var(--r-input); height:110px; border:1px solid var(--border); background-image:{{ ar.currentBg }}; background-size:cover; background-position:center;"></div>
                   </sc-if>
                   <sc-if value="{{ ar.noCurrent }}" hint-placeholder-val="{{ true }}">
-                    <div onClick="{{ pickPhoto }}" data-area="{{ ar.id }}" data-kind="current" style="cursor:pointer; height:110px; border:1.5px dashed #f2cdda; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; color:#c98aa4; text-align:center; padding:6px; background:#fdf5f8;" style-hover="border-color:#d95c8a; color:#d95c8a;">＋ Add this week's photo</div>
+                    <div onClick="{{ pickPhoto }}" data-area="{{ ar.id }}" data-kind="current" style="cursor:pointer; height:110px; border:1.5px dashed color-mix(in srgb,var(--sk-danger) 25%,transparent); border-radius:var(--r-input); display:flex; align-items:center; justify-content:center; font-size:12.5px; font-weight:700; color:var(--sk-danger); text-align:center; padding:6px; background:color-mix(in srgb,var(--sk-accent) 4%,var(--card-bg));" style-hover="border-color:var(--sk-accent); color:var(--sk-accent);">＋ Add this week's photo</div>
                   </sc-if>
                 </div>
               </div>
             </div>
           </sc-for>
         </div>
-        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:20px; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:16px 18px;">
+        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:20px; background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-card); padding:16px 18px;">
           <div style="flex:1; min-width:180px;">
-            <div style="font-weight:800; font-size:15px; color:#3b4038;">{{ readyLabel }}</div>
-            <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">{{ inspectHint }}</div>
+            <div style="font-weight:800; font-size:var(--fs-input); color:var(--txt);">{{ readyLabel }}</div>
+            <div style="font-size:12.5px; color:var(--txt2); font-weight:600;">{{ inspectHint }}</div>
           </div>
           <sc-if value="{{ inspecting }}" hint-placeholder-val="{{ false }}">
-            <div style="display:flex; align-items:center; gap:10px; color:#d95c8a; font-weight:800; font-size:14px;">
-              <div style="width:18px; height:18px; border:3px solid #f2cdda; border-top-color:#d95c8a; border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+            <div style="display:flex; align-items:center; gap:10px; color:var(--sk-accent); font-weight:800; font-size:var(--fs-stats);">
+              <div style="width:18px; height:18px; border:3px solid color-mix(in srgb,var(--sk-danger) 25%,transparent); border-top-color:var(--sk-accent); border-radius:50%; animation:spin 0.8s linear infinite;"></div>
               Inspecting your room…
             </div>
           </sc-if>
           <sc-if value="{{ notInspecting }}" hint-placeholder-val="{{ true }}">
-            <button onClick="{{ runInspection }}" disabled="{{ inspectDisabled }}" style="background:#d95c8a; color:#fff; font-weight:800; font-size:14px; padding:12px 22px; border-radius:999px; cursor:pointer; border:none; font-family:'Nunito',sans-serif; white-space:nowrap; opacity:{{ inspectOpacity }};" style-hover="background:#c74a78;">Run inspection +20</button>
+            <button onClick="{{ runInspection }}" disabled="{{ inspectDisabled }}" style="background:var(--sk-accent); color:#fff; font-weight:800; font-size:var(--fs-stats); padding:12px 22px; border-radius:var(--r-pill); cursor:pointer; border:none; font-family:var(--b-font),var(--jp-font),sans-serif; white-space:nowrap; opacity:{{ inspectOpacity }};" style-hover="background:var(--sk-accent-dk);">Run inspection +20</button>
           </sc-if>
         </div>
         <sc-if value="{{ hasInspectError }}" hint-placeholder-val="{{ false }}">
-          <div style="margin-top:12px; font-size:13.5px; font-weight:700; color:#a83e66; background:#fbe9f0; border-radius:12px; padding:10px 14px;">{{ inspectError }}</div>
+          <div style="margin-top:12px; font-size:13.5px; font-weight:700; color:var(--sk-danger); background:var(--sk-danger-bg); border-radius:var(--r-btn); padding:10px 14px;">{{ inspectError }}</div>
         </sc-if>
       </div>
     </sc-if>
 
     <sc-if value="{{ isReports }}" hint-placeholder-val="{{ false }}">
       <div>
-        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Inspection reports</h1>
-        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">Your room's history, newest first.</div>
+        <h1 style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:var(--fs-modal-title); margin:0 0 6px; color:var(--txt);">Inspection reports</h1>
+        <div style="font-size:14.5px; color:var(--txt2); font-weight:600; margin-bottom:22px;">Your room's history, newest first.</div>
         <sc-if value="{{ noReports }}" hint-placeholder-val="{{ false }}">
-          <div style="border:1.5px dashed #cfd4c2; border-radius:16px; padding:40px 20px; text-align:center; color:#9aa08e; font-weight:700; font-size:14.5px;">No reports yet — run your first photo check-in and the report will land here.</div>
+          <div style="border:1.5px dashed var(--border); border-radius:var(--r-card); padding:40px 20px; text-align:center; color:var(--txt2); font-weight:700; font-size:14.5px;">No reports yet — run your first photo check-in and the report will land here.</div>
         </sc-if>
         <div style="display:flex; flex-direction:column; gap:16px;">
           <sc-for list="{{ reportsView }}" as="rp" hint-placeholder-count="1">
-            <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:18px; padding:20px;">
+            <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-card); padding:20px;">
               <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:14px;">
-                <div style="width:58px; height:58px; border-radius:50%; background:{{ rp.scoreBg }}; color:{{ rp.scoreColor }}; display:flex; align-items:center; justify-content:center; font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:20px;">{{ rp.overall }}</div>
+                <div style="width:58px; height:58px; border-radius:50%; background:{{ rp.scoreBg }}; color:{{ rp.scoreColor }}; display:flex; align-items:center; justify-content:center; font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:20px;">{{ rp.overall }}</div>
                 <div style="flex:1; min-width:200px;">
-                  <div style="font-weight:800; font-size:15.5px; color:#3b4038;">{{ rp.dateLabel }}</div>
-                  <div style="font-size:13.5px; color:#7c8274; font-weight:600;">{{ rp.summary }}</div>
+                  <div style="font-weight:800; font-size:15.5px; color:var(--txt);">{{ rp.dateLabel }}</div>
+                  <div style="font-size:13.5px; color:var(--txt2); font-weight:600;">{{ rp.summary }}</div>
                 </div>
               </div>
               <div style="display:flex; flex-direction:column; gap:12px;">
                 <sc-for list="{{ rp.areas }}" as="ra" hint-placeholder-count="2">
-                  <div style="border-top:1px solid #ecefe2; padding-top:12px;">
+                  <div style="border-top:1px solid color-mix(in srgb,var(--border) 30%,transparent); padding-top:12px;">
                     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;">
-                      <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ ra.name }}</div>
-                      <div style="font-size:12px; font-weight:800; padding:3px 10px; border-radius:999px; background:{{ ra.chipBg }}; color:{{ ra.chipColor }};">{{ ra.verdict }} · {{ ra.score }}</div>
+                      <div style="font-weight:800; font-size:14.5px; color:var(--txt);">{{ ra.name }}</div>
+                      <div style="font-size:var(--fs-hint); font-weight:800; padding:3px 10px; border-radius:var(--r-pill); background:{{ ra.chipBg }}; color:{{ ra.chipColor }};">{{ ra.verdict }} · {{ ra.score }}</div>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px; margin-bottom:6px;">
                       <sc-for list="{{ ra.issues }}" as="line" hint-placeholder-count="0">
-                        <div style="font-size:13.5px; color:#8a5568; font-weight:600;">• {{ line }}</div>
+                        <div style="font-size:13.5px; color:var(--sk-danger); font-weight:600;">• {{ line }}</div>
                       </sc-for>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:3px;">
                       <sc-for list="{{ ra.steps }}" as="line" hint-placeholder-count="0">
-                        <div style="font-size:13.5px; color:#55604f; font-weight:600;">{{ line }}</div>
+                        <div style="font-size:13.5px; color:var(--txt); font-weight:600;">{{ line }}</div>
                       </sc-for>
                     </div>
                     <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
                       <sc-for list="{{ ra.suggested }}" as="sg" hint-placeholder-count="0">
-                        <div onClick="{{ addSuggested }}" data-name="{{ sg.name }}" data-price="{{ sg.price }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:6px 12px; border-radius:999px; border:1px solid #f2cdda; color:#a83e66; background:#fdf5f8;" style-hover="background:#fbe9f0;">＋ {{ sg.label }}</div>
+                        <div onClick="{{ addSuggested }}" data-name="{{ sg.name }}" data-price="{{ sg.price }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:6px 12px; border-radius:var(--r-pill); border:1px solid color-mix(in srgb,var(--sk-danger) 25%,transparent); color:var(--sk-danger); background:color-mix(in srgb,var(--sk-accent) 4%,var(--card-bg));" style-hover="background:var(--sk-danger-bg);">＋ {{ sg.label }}</div>
                       </sc-for>
                     </div>
                   </div>
@@ -713,46 +739,46 @@ html.sk-measure .sk-page { height: auto !important; }
 
     <sc-if value="{{ isDeep }}" hint-placeholder-val="{{ false }}">
       <div>
-        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Deep-clean zone</h1>
-        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">Deep cleans are tied to your long holidays — track them here and Sukkiri builds a plan for each from your task pool, then reminds you on Today as the holiday nears.</div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; background:#fcfcf9; border:1px dashed #cfd4c2; border-radius:16px; padding:16px 18px; margin-bottom:18px;">
-          <input value="{{ form.holName }}" data-field="holName" onChange="{{ onField }}" placeholder="Holiday name (e.g. Golden Week)" style="flex:2; min-width:180px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-          <input value="{{ form.holDate }}" data-field="holDate" onChange="{{ onField }}" type="date" style="border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-          <div onClick="{{ addHoliday }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:#4a6647;">Build plan</div>
+        <h1 style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:var(--fs-modal-title); margin:0 0 6px; color:var(--txt);">Deep-clean zone</h1>
+        <div style="font-size:14.5px; color:var(--txt2); font-weight:600; margin-bottom:22px;">Deep cleans are tied to your long holidays — track them here and Sukkiri builds a plan for each from your task pool, then reminds you on Today as the holiday nears.</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; background:var(--card-bg); border:1px dashed var(--border); border-radius:var(--r-card); padding:16px 18px; margin-bottom:18px;">
+          <input value="{{ form.holName }}" data-field="holName" onChange="{{ onField }}" placeholder="Holiday name (e.g. Golden Week)" style="flex:2; min-width:180px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+          <input value="{{ form.holDate }}" data-field="holDate" onChange="{{ onField }}" type="date" style="border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+          <div onClick="{{ addHoliday }}" style="background:var(--btn); color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:var(--r-pill); cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Build plan</div>
         </div>
         <div style="display:flex; flex-direction:column; gap:14px; margin-bottom:24px;">
           <sc-for list="{{ holidaysView }}" as="h" hint-placeholder-count="0">
-            <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:18px;">
+            <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-card); padding:18px;">
               <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
-                <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:17px; color:#3f5540; flex:1;">{{ h.name }}</div>
-                <div style="font-size:12.5px; font-weight:800; color:#8b917f;">{{ h.dateLabel }}</div>
-                <div style="font-size:12.5px; font-weight:800; padding:4px 12px; border-radius:999px; background:#e7eee4; color:#5c7a58;">{{ h.progress }}</div>
-                <div onClick="{{ deleteHoliday }}" data-id="{{ h.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800;" style-hover="color:#d95c8a;">✕</div>
+                <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:17px; color:var(--txt); flex:1;">{{ h.name }}</div>
+                <div style="font-size:12.5px; font-weight:800; color:var(--txt2);">{{ h.dateLabel }}</div>
+                <div style="font-size:12.5px; font-weight:800; padding:4px 12px; border-radius:var(--r-pill); background:color-mix(in srgb,var(--accent) 10%,var(--card-bg)); color:var(--accent);">{{ h.progress }}</div>
+                <div onClick="{{ deleteHoliday }}" data-id="{{ h.id }}" style="color:var(--txt2); cursor:pointer; font-weight:800;" style-hover="color:var(--sk-accent);">✕</div>
               </div>
               <div style="display:flex; flex-direction:column; gap:6px;">
                 <sc-for list="{{ h.tasks }}" as="tk" hint-placeholder-count="3">
-                  <div onClick="{{ toggleHolTask }}" data-hid="{{ h.id }}" data-idx="{{ tk.idx }}" style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:6px 8px; border-radius:10px;" style-hover="background:#f4f5ec;">
-                    <div style="width:20px; height:20px; border-radius:50%; border:2px solid {{ tk.circleBorder }}; background:{{ tk.circleBg }}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800;">{{ tk.mark }}</div>
-                    <div style="font-size:14px; font-weight:700; color:{{ tk.color }}; text-decoration:{{ tk.deco }};">{{ tk.name }}</div>
+                  <div onClick="{{ toggleHolTask }}" data-hid="{{ h.id }}" data-idx="{{ tk.idx }}" style="display:flex; align-items:center; gap:10px; cursor:pointer; padding:6px 8px; border-radius:var(--r-input);" style-hover="background:var(--surface-sunken);">
+                    <div style="width:20px; height:20px; border-radius:50%; border:2px solid {{ tk.circleBorder }}; background:{{ tk.circleBg }}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:var(--fs-hint); font-weight:800;">{{ tk.mark }}</div>
+                    <div style="font-size:var(--fs-stats); font-weight:700; color:{{ tk.color }}; text-decoration:{{ tk.deco }};">{{ tk.name }}</div>
                   </div>
                 </sc-for>
               </div>
             </div>
           </sc-for>
         </div>
-        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:16px 18px;">
-          <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:10px;">Deep-clean task pool</div>
+        <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-card); padding:16px 18px;">
+          <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:var(--fs-input); color:var(--txt); margin-bottom:10px;">Deep-clean task pool</div>
           <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
             <sc-for list="{{ poolView }}" as="p" hint-placeholder-count="3">
-              <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:#55604f; background:#eef0e4; border-radius:999px; padding:6px 8px 6px 14px;">
+              <div style="display:flex; align-items:center; gap:8px; font-size:var(--fs-control); font-weight:700; color:var(--txt); background:var(--surface-sunken); border-radius:var(--r-pill); padding:6px 8px 6px 14px;">
                 <span>{{ p.name }}</span>
-                <span onClick="{{ removePoolTask }}" data-idx="{{ p.idx }}" style="cursor:pointer; color:#a8ad9f; font-weight:800;" style-hover="color:#d95c8a;">✕</span>
+                <span onClick="{{ removePoolTask }}" data-idx="{{ p.idx }}" style="cursor:pointer; color:var(--txt2); font-weight:800;" style-hover="color:var(--sk-accent);">✕</span>
               </div>
             </sc-for>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <input value="{{ form.poolTask }}" data-field="poolTask" onChange="{{ onField }}" placeholder="Add a deep-clean task (e.g. Curtain wash)" style="flex:1; min-width:200px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-            <div onClick="{{ addPoolTask }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center;" style-hover="background:#4a6647;">Add</div>
+            <input value="{{ form.poolTask }}" data-field="poolTask" onChange="{{ onField }}" placeholder="Add a deep-clean task (e.g. Curtain wash)" style="flex:1; min-width:200px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+            <div onClick="{{ addPoolTask }}" style="background:var(--btn); color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:var(--r-pill); cursor:pointer; align-self:center;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Add</div>
           </div>
         </div>
       </div>
@@ -760,129 +786,129 @@ html.sk-measure .sk-page { height: auto !important; }
 
     <sc-if value="{{ isShop }}" hint-placeholder-val="{{ false }}">
       <div>
-        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Shopping list</h1>
-        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">Organizing gear to buy — inspection reports suggest items here too. Tick the items you want, then send them to the cost app as one request.</div>
-        <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 18px; margin-bottom:14px;">
+        <h1 style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:var(--fs-modal-title); margin:0 0 6px; color:var(--txt);">Shopping list</h1>
+        <div style="font-size:14.5px; color:var(--txt2); font-weight:600; margin-bottom:22px;">Organizing gear to buy — inspection reports suggest items here too. Tick the items you want, then send them to the cost app as one request.</div>
+        <div style="display:flex; align-items:center; gap:18px; flex-wrap:wrap; background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-card); padding:14px 18px; margin-bottom:14px;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <div style="font-size:12.5px; font-weight:800; color:#8b917f;">Monthly budget ¥</div>
-            <input value="{{ budgetVal }}" onChange="{{ onBudget }}" type="number" min="0" style="width:100px; border:1px solid #dde0d1; border-radius:10px; padding:8px 12px; font-family:'Nunito',sans-serif; font-size:14px; font-weight:800; background:#fff; color:#3b4038; outline:none;">
+            <div style="font-size:12.5px; font-weight:800; color:var(--txt2);">Monthly budget ¥</div>
+            <input value="{{ budgetVal }}" onChange="{{ onBudget }}" type="number" min="0" style="width:100px; border:1px solid var(--border); border-radius:var(--r-input); padding:8px 12px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); font-weight:800; background:var(--input-bg); color:var(--txt); outline:none;">
           </div>
-          <div style="font-size:13.5px; font-weight:800; color:#5c7a58;">{{ spentLabel }}</div>
+          <div style="font-size:13.5px; font-weight:800; color:var(--accent);">{{ spentLabel }}</div>
           <div style="font-size:13.5px; font-weight:800; color:{{ remainColor }};">{{ remainLabel }}</div>
           <div style="flex:1;"></div>
           <sc-if value="{{ hasSelectable }}" hint-placeholder-val="{{ false }}">
-            <div onClick="{{ selectAllOpen }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 14px; border-radius:999px; border:1.5px solid #cfd4c2; color:#7c8274; white-space:nowrap;" style-hover="background:#f4f5ec;">Select all</div>
+            <div onClick="{{ selectAllOpen }}" style="cursor:pointer; font-size:12.5px; font-weight:800; padding:8px 14px; border-radius:var(--r-pill); border:1.5px solid var(--border); color:var(--txt2); white-space:nowrap;" style-hover="background:var(--surface-sunken);">Select all</div>
           </sc-if>
-          <div onClick="{{ sendToCostApp }}" style="background:{{ sendBg }}; border:1.5px solid {{ sendBorder }}; color:#fff; font-weight:800; font-size:12.5px; padding:8px 16px; border-radius:999px; cursor:pointer; white-space:nowrap;" style-hover="filter:brightness(0.94);">{{ sendLabel }}</div>
+          <div onClick="{{ sendToCostApp }}" style="background:{{ sendBg }}; border:1.5px solid {{ sendBorder }}; color:#fff; font-weight:800; font-size:12.5px; padding:8px 16px; border-radius:var(--r-pill); cursor:pointer; white-space:nowrap;" style-hover="filter:brightness(0.94);">{{ sendLabel }}</div>
         </div>
         <sc-if value="{{ hasCostReqs }}" hint-placeholder-val="{{ false }}">
           <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:14px;">
-            <div style="font-size:12.5px; font-weight:800; color:#8b917f;">Requests to the cost app</div>
+            <div style="font-size:12.5px; font-weight:800; color:var(--txt2);">Requests to the cost app</div>
             <sc-for list="{{ costReqView }}" as="rq" hint-placeholder-count="1">
-              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:14px; padding:10px 16px;">
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-panel); padding:10px 16px;">
                 <div style="flex:1; min-width:160px;">
-                  <div style="font-weight:800; font-size:13.5px; color:#3b4038;">{{ rq.summary }}</div>
-                  <div style="font-size:12px; font-weight:600; color:#7c8274;">{{ rq.when }} · {{ rq.id }}</div>
+                  <div style="font-weight:800; font-size:13.5px; color:var(--txt);">{{ rq.summary }}</div>
+                  <div style="font-size:var(--fs-hint); font-weight:600; color:var(--txt2);">{{ rq.when }} · {{ rq.id }}</div>
                   <sc-if value="{{ rq.hasErr }}" hint-placeholder-val="{{ false }}">
-                    <div style="font-size:12px; font-weight:700; color:#a83e66;">{{ rq.msg }}</div>
+                    <div style="font-size:var(--fs-hint); font-weight:700; color:var(--sk-danger);">{{ rq.msg }}</div>
                   </sc-if>
                 </div>
-                <div style="font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; background:{{ rq.bg }}; color:{{ rq.color }}; white-space:nowrap;">{{ rq.label }}</div>
+                <div style="font-size:var(--fs-caps); font-weight:800; padding:3px 10px; border-radius:var(--r-pill); background:{{ rq.bg }}; color:{{ rq.color }}; white-space:nowrap;">{{ rq.label }}</div>
               </div>
             </sc-for>
           </div>
         </sc-if>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; background:#fcfcf9; border:1px dashed #cfd4c2; border-radius:16px; padding:16px 18px; margin-bottom:18px;">
-          <input value="{{ form.shopName }}" data-field="shopName" onChange="{{ onField }}" placeholder="Item (e.g. Hanger set)" style="flex:2; min-width:150px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-          <input value="{{ form.shopPrice }}" data-field="shopPrice" onChange="{{ onField }}" type="number" min="0" placeholder="¥ price" style="width:110px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-          <input value="{{ form.shopLink }}" data-field="shopLink" onChange="{{ onField }}" placeholder="Link (optional)" style="flex:2; min-width:150px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-          <div onClick="{{ addShopItem }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center;" style-hover="background:#4a6647;">Add</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; background:var(--card-bg); border:1px dashed var(--border); border-radius:var(--r-card); padding:16px 18px; margin-bottom:18px;">
+          <input value="{{ form.shopName }}" data-field="shopName" onChange="{{ onField }}" placeholder="Item (e.g. Hanger set)" style="flex:2; min-width:150px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+          <input value="{{ form.shopPrice }}" data-field="shopPrice" onChange="{{ onField }}" type="number" min="0" placeholder="¥ price" style="width:110px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+          <input value="{{ form.shopLink }}" data-field="shopLink" onChange="{{ onField }}" placeholder="Link (optional)" style="flex:2; min-width:150px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+          <div onClick="{{ addShopItem }}" style="background:var(--btn); color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:var(--r-pill); cursor:pointer; align-self:center;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Add</div>
         </div>
         <div style="display:flex; flex-direction:column; gap:8px;">
           <sc-for list="{{ shopView }}" as="it" hint-placeholder-count="2">
-            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:14px; padding:12px 16px; opacity:{{ it.opacity }};">
-              <div onClick="{{ toggleBought }}" data-id="{{ it.id }}" style="width:22px; height:22px; border-radius:50%; border:2px solid {{ it.circleBorder }}; background:{{ it.circleBg }}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; cursor:pointer;">{{ it.mark }}</div>
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-panel); padding:12px 16px; opacity:{{ it.opacity }};">
+              <div onClick="{{ toggleBought }}" data-id="{{ it.id }}" style="width:22px; height:22px; border-radius:50%; border:2px solid {{ it.circleBorder }}; background:{{ it.circleBg }}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:var(--fs-hint); font-weight:800; cursor:pointer;">{{ it.mark }}</div>
               <div style="flex:1; min-width:140px;">
-                <div style="font-weight:800; font-size:14.5px; color:#3b4038; text-decoration:{{ it.deco }};">{{ it.name }}</div>
+                <div style="font-weight:800; font-size:14.5px; color:var(--txt); text-decoration:{{ it.deco }};">{{ it.name }}</div>
                 <sc-if value="{{ it.hasLink }}" hint-placeholder-val="{{ false }}">
-                  <a href="{{ it.link }}" target="_blank" style="font-size:12px; font-weight:700;">{{ it.link }}</a>
+                  <a href="{{ it.link }}" target="_blank" style="font-size:var(--fs-hint); font-weight:700;">{{ it.link }}</a>
                 </sc-if>
               </div>
               <sc-if value="{{ it.suggested }}" hint-placeholder-val="{{ false }}">
-                <div style="font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; background:#fbe9f0; color:#a83e66; white-space:nowrap;">suggested by inspection</div>
+                <div style="font-size:var(--fs-caps); font-weight:800; padding:3px 10px; border-radius:var(--r-pill); background:var(--sk-danger-bg); color:var(--sk-danger); white-space:nowrap;">suggested by inspection</div>
               </sc-if>
               <sc-if value="{{ it.isAuto }}" hint-placeholder-val="{{ false }}">
-                <div style="font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; background:#e7eee4; color:#3f5540; white-space:nowrap;">🔁 auto</div>
+                <div style="font-size:var(--fs-caps); font-weight:800; padding:3px 10px; border-radius:var(--r-pill); background:color-mix(in srgb,var(--accent) 10%,var(--card-bg)); color:var(--txt); white-space:nowrap;">🔁 auto</div>
               </sc-if>
               <sc-if value="{{ it.hasSt }}" hint-placeholder-val="{{ false }}">
-                <div style="font-size:11px; font-weight:800; padding:3px 10px; border-radius:999px; background:{{ it.stBg }}; color:{{ it.stColor }}; white-space:nowrap;">{{ it.stLabel }}</div>
+                <div style="font-size:var(--fs-caps); font-weight:800; padding:3px 10px; border-radius:var(--r-pill); background:{{ it.stBg }}; color:{{ it.stColor }}; white-space:nowrap;">{{ it.stLabel }}</div>
               </sc-if>
               <sc-if value="{{ it.canSel }}" hint-placeholder-val="{{ false }}">
-                <div onClick="{{ toggleSel }}" data-id="{{ it.id }}" title="Include in the next request" style="width:22px; height:22px; border-radius:6px; border:2px solid {{ it.selBorder }}; background:{{ it.selBg }}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; cursor:pointer;">{{ it.selMark }}</div>
+                <div onClick="{{ toggleSel }}" data-id="{{ it.id }}" title="Include in the next request" style="width:22px; height:22px; border-radius:var(--r-badge); border:2px solid {{ it.selBorder }}; background:{{ it.selBg }}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:var(--fs-hint); font-weight:800; cursor:pointer;">{{ it.selMark }}</div>
               </sc-if>
-              <div style="font-weight:800; font-size:14.5px; color:#5c7a58;">{{ it.priceLabel }}</div>
-              <div onClick="{{ deleteShopItem }}" data-id="{{ it.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800;" style-hover="color:#d95c8a;">✕</div>
+              <div style="font-weight:800; font-size:14.5px; color:var(--accent);">{{ it.priceLabel }}</div>
+              <div onClick="{{ deleteShopItem }}" data-id="{{ it.id }}" style="color:var(--txt2); cursor:pointer; font-weight:800;" style-hover="color:var(--sk-accent);">✕</div>
             </div>
           </sc-for>
         </div>
-        <div style="margin-top:16px; text-align:right; font-weight:800; font-size:15px; color:#3f5540;">{{ totalLabel }}</div>
+        <div style="margin-top:16px; text-align:right; font-weight:800; font-size:var(--fs-input); color:var(--txt);">{{ totalLabel }}</div>
       </div>
     </sc-if>
 
     <sc-if value="{{ isSupplies }}" hint-placeholder-val="{{ false }}">
       <div>
-        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 6px; color:#3b4038;">Supplies</h1>
-        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:22px;">Refills count from the last restock; when due they jump onto your shopping list automatically. One-time buys move to "Owned".</div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap; background:#fcfcf9; border:1px dashed #cfd4c2; border-radius:16px; padding:16px 18px; margin-bottom:18px;">
-          <input value="{{ form.supName }}" data-field="supName" onChange="{{ onField }}" placeholder="Supply (e.g. Sponges)" style="flex:2; min-width:150px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-          <select value="{{ form.supKind }}" data-field="supKind" onChange="{{ onField }}" style="border:1px solid #dde0d1; border-radius:10px; padding:10px 12px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
+        <h1 style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:var(--fs-modal-title); margin:0 0 6px; color:var(--txt);">Supplies</h1>
+        <div style="font-size:14.5px; color:var(--txt2); font-weight:600; margin-bottom:22px;">Refills count from the last restock; when due they jump onto your shopping list automatically. One-time buys move to "Owned".</div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap; background:var(--card-bg); border:1px dashed var(--border); border-radius:var(--r-card); padding:16px 18px; margin-bottom:18px;">
+          <input value="{{ form.supName }}" data-field="supName" onChange="{{ onField }}" placeholder="Supply (e.g. Sponges)" style="flex:2; min-width:150px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+          <select value="{{ form.supKind }}" data-field="supKind" onChange="{{ onField }}" style="border:1px solid var(--border); border-radius:var(--r-input); padding:10px 12px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
             <option value="refill">Refill</option>
             <option value="onetime">One-time buy</option>
           </select>
-          <input value="{{ form.supEvery }}" data-field="supEvery" onChange="{{ onField }}" type="number" min="1" placeholder="every N days" style="width:120px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-          <input value="{{ form.supPrice }}" data-field="supPrice" onChange="{{ onField }}" type="number" min="0" placeholder="¥ price" style="width:100px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-          <div onClick="{{ addSupply }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center;" style-hover="background:#4a6647;">Add</div>
+          <input value="{{ form.supEvery }}" data-field="supEvery" onChange="{{ onField }}" type="number" min="1" placeholder="every N days" style="width:120px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+          <input value="{{ form.supPrice }}" data-field="supPrice" onChange="{{ onField }}" type="number" min="0" placeholder="¥ price" style="width:100px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+          <div onClick="{{ addSupply }}" style="background:var(--btn); color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:var(--r-pill); cursor:pointer; align-self:center;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Add</div>
         </div>
-        <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:8px;"><div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540;">Refills</div><div style="font-size:12px; font-weight:600; color:#9aa08e;">🔁 Auto-request sends a purchase request to the cost app by itself each time a refill comes due.</div></div>
+        <div style="display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:8px;"><div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:var(--fs-input); color:var(--txt);">Refills</div><div style="font-size:var(--fs-hint); font-weight:600; color:var(--txt2);">🔁 Auto-request sends a purchase request to the cost app by itself each time a refill comes due.</div></div>
         <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:22px;">
           <sc-for list="{{ refillView }}" as="p" hint-placeholder-count="3">
-            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:14px; padding:12px 16px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-panel); padding:12px 16px;">
               <div style="flex:1; min-width:150px;">
-                <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ p.name }}</div>
-                <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">{{ p.sub }}</div>
+                <div style="font-weight:800; font-size:14.5px; color:var(--txt);">{{ p.name }}</div>
+                <div style="font-size:12.5px; color:var(--txt2); font-weight:600;">{{ p.sub }}</div>
               </div>
-              <div style="font-size:12.5px; font-weight:800; padding:5px 12px; border-radius:999px; background:{{ p.chipBg }}; color:{{ p.chipColor }};">{{ p.dueLabel }}</div>
-              <div style="font-weight:800; font-size:14px; color:#5c7a58;">{{ p.priceLabel }}</div>
-              <div onClick="{{ toggleAuto }}" data-id="{{ p.id }}" title="Send a purchase request to the cost app automatically when this comes due" style="background:{{ p.autoBg }}; color:{{ p.autoColor }}; border:1.5px solid {{ p.autoBorder }}; font-weight:800; font-size:12.5px; padding:7px 13px; border-radius:999px; cursor:pointer; white-space:nowrap;" style-hover="filter:brightness(0.95);">🔁 {{ p.autoLabel }}</div>
-              <div onClick="{{ restock }}" data-id="{{ p.id }}" style="background:#3f5540; color:#fff; font-weight:800; font-size:12.5px; padding:8px 14px; border-radius:999px; cursor:pointer;" style-hover="background:#2e4030;">Restocked</div>
-              <div onClick="{{ deleteSupply }}" data-id="{{ p.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800;" style-hover="color:#d95c8a;">✕</div>
+              <div style="font-size:12.5px; font-weight:800; padding:5px 12px; border-radius:var(--r-pill); background:{{ p.chipBg }}; color:{{ p.chipColor }};">{{ p.dueLabel }}</div>
+              <div style="font-weight:800; font-size:var(--fs-stats); color:var(--accent);">{{ p.priceLabel }}</div>
+              <div onClick="{{ toggleAuto }}" data-id="{{ p.id }}" title="Send a purchase request to the cost app automatically when this comes due" style="background:{{ p.autoBg }}; color:{{ p.autoColor }}; border:1.5px solid {{ p.autoBorder }}; font-weight:800; font-size:12.5px; padding:7px 13px; border-radius:var(--r-pill); cursor:pointer; white-space:nowrap;" style-hover="filter:brightness(0.95);">🔁 {{ p.autoLabel }}</div>
+              <div onClick="{{ restock }}" data-id="{{ p.id }}" style="background:var(--btn); color:#fff; font-weight:800; font-size:12.5px; padding:8px 14px; border-radius:var(--r-pill); cursor:pointer;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Restocked</div>
+              <div onClick="{{ deleteSupply }}" data-id="{{ p.id }}" style="color:var(--txt2); cursor:pointer; font-weight:800;" style-hover="color:var(--sk-accent);">✕</div>
             </div>
           </sc-for>
         </div>
-        <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:8px;">One-time buys</div>
+        <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:var(--fs-input); color:var(--txt); margin-bottom:8px;">One-time buys</div>
         <div style="display:flex; flex-direction:column; gap:8px; margin-bottom:22px;">
           <sc-for list="{{ onetimeView }}" as="p" hint-placeholder-count="2">
-            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:#fcfcf9; border:1px solid #e0e3d6; border-radius:14px; padding:12px 16px;">
+            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-panel); padding:12px 16px;">
               <div style="flex:1; min-width:150px;">
-                <div style="font-weight:800; font-size:14.5px; color:#3b4038;">{{ p.name }}</div>
-                <div style="font-size:12.5px; color:#9aa08e; font-weight:600;">{{ p.sub }}</div>
+                <div style="font-weight:800; font-size:14.5px; color:var(--txt);">{{ p.name }}</div>
+                <div style="font-size:12.5px; color:var(--txt2); font-weight:600;">{{ p.sub }}</div>
               </div>
-              <div style="font-weight:800; font-size:14px; color:#5c7a58;">{{ p.priceLabel }}</div>
-              <div onClick="{{ markOwned }}" data-id="{{ p.id }}" style="background:#3f5540; color:#fff; font-weight:800; font-size:12.5px; padding:8px 14px; border-radius:999px; cursor:pointer;" style-hover="background:#2e4030;">Bought it</div>
-              <div onClick="{{ deleteSupply }}" data-id="{{ p.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800;" style-hover="color:#d95c8a;">✕</div>
+              <div style="font-weight:800; font-size:var(--fs-stats); color:var(--accent);">{{ p.priceLabel }}</div>
+              <div onClick="{{ markOwned }}" data-id="{{ p.id }}" style="background:var(--btn); color:#fff; font-weight:800; font-size:12.5px; padding:8px 14px; border-radius:var(--r-pill); cursor:pointer;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Bought it</div>
+              <div onClick="{{ deleteSupply }}" data-id="{{ p.id }}" style="color:var(--txt2); cursor:pointer; font-weight:800;" style-hover="color:var(--sk-accent);">✕</div>
             </div>
           </sc-for>
         </div>
-        <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:8px;">Owned</div>
+        <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:var(--fs-input); color:var(--txt); margin-bottom:8px;">Owned</div>
         <sc-if value="{{ noOwned }}" hint-placeholder-val="{{ true }}">
-          <div style="font-size:13px; color:#9aa08e; font-weight:600;">Nothing owned yet — items land here once bought.</div>
+          <div style="font-size:var(--fs-control); color:var(--txt2); font-weight:600;">Nothing owned yet — items land here once bought.</div>
         </sc-if>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <sc-for list="{{ ownedView }}" as="p" hint-placeholder-count="0">
-            <div style="display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:#55604f; background:#eef0e4; border-radius:999px; padding:6px 8px 6px 14px;">
+            <div style="display:flex; align-items:center; gap:8px; font-size:var(--fs-control); font-weight:700; color:var(--txt); background:var(--surface-sunken); border-radius:var(--r-pill); padding:6px 8px 6px 14px;">
               <span>✓ {{ p.name }}</span>
               <span style="color:{{ p.replColor }}; font-weight:700;">{{ p.replLabel }}</span>
-              <span onClick="{{ unown }}" data-id="{{ p.id }}" title="Needs replacing" style="cursor:pointer; color:#a8ad9f; font-weight:800;" style-hover="color:#d95c8a;">↺</span>
+              <span onClick="{{ unown }}" data-id="{{ p.id }}" title="Needs replacing" style="cursor:pointer; color:var(--txt2); font-weight:800;" style-hover="color:var(--sk-accent);">↺</span>
             </div>
           </sc-for>
         </div>
@@ -891,36 +917,36 @@ html.sk-measure .sk-page { height: auto !important; }
 
     <sc-if value="{{ isGarbage }}" hint-placeholder-val="{{ false }}">
       <div>
-        <h1 style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:28px; margin:0 0 4px; color:#3b4038;">Garbage days <span style="font-size:15px; color:#a0a696; font-weight:700;">ごみ収集</span></h1>
-        <div style="font-size:13px; font-weight:800; color:#5c7a58; margin-bottom:6px;">{{ garbageWard }}</div>
-        <div style="font-size:14.5px; color:#7c8274; font-weight:600; margin-bottom:18px;">{{ garbageIntro }}</div>
+        <h1 style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:var(--fs-modal-title); margin:0 0 4px; color:var(--txt);">Garbage days <span style="font-size:var(--fs-input); color:var(--txt2); font-weight:700;">ごみ収集</span></h1>
+        <div style="font-size:var(--fs-control); font-weight:800; color:var(--accent); margin-bottom:6px;">{{ garbageWard }}</div>
+        <div style="font-size:14.5px; color:var(--txt2); font-weight:600; margin-bottom:18px;">{{ garbageIntro }}</div>
 
         <sc-if value="{{ hasUpcoming }}" hint-placeholder-val="{{ false }}">
           <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(190px, 1fr)); gap:10px; margin-bottom:16px;">
             <sc-for list="{{ gUpcoming }}" as="up" hint-placeholder-count="4">
-              <div style="background:{{ up.bg }}; border:1px solid {{ up.border }}; border-radius:14px; padding:12px 14px;">
+              <div style="background:{{ up.bg }}; border:1px solid {{ up.border }}; border-radius:var(--r-panel); padding:12px 14px;">
                 <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
                   <svg viewBox="0 0 24 24" width="18" height="18"><path d="{{ up.path }}" fill="{{ up.color }}" fill-rule="evenodd"></path></svg>
                   <div style="font-size:10.5px; font-weight:900; letter-spacing:0.06em; color:{{ up.whenColor }};">{{ up.when }}</div>
                 </div>
-                <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3b4038; word-break:keep-all;">{{ up.jp }}</div>
-                <div style="font-size:12.5px; font-weight:700; color:#68705f;">{{ up.en }}</div>
-                <div style="font-size:12.5px; font-weight:700; color:#55604f; margin-top:5px; line-height:1.45;">{{ up.bag }}</div>
+                <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:var(--fs-input); color:var(--txt); word-break:keep-all;">{{ up.jp }}</div>
+                <div style="font-size:12.5px; font-weight:700; color:var(--txt);">{{ up.en }}</div>
+                <div style="font-size:12.5px; font-weight:700; color:var(--txt); margin-top:5px; line-height:1.45;">{{ up.bag }}</div>
               </div>
             </sc-for>
           </div>
         </sc-if>
 
-        <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:18px; padding:16px 18px 18px; margin-bottom:18px;">
+        <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-card); padding:16px 18px 18px; margin-bottom:18px;">
           <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
-            <div onClick="{{ gPrev }}" style="cursor:pointer; width:30px; height:30px; border-radius:50%; border:1.5px solid #dde0d1; display:flex; align-items:center; justify-content:center; color:#7c8274; font-weight:800; flex-shrink:0;" style-hover="border-color:#5c7a58; color:#5c7a58;">‹</div>
-            <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:900; font-size:20px; color:#3f5540; min-width:150px;">{{ gMonthLabel }}</div>
-            <div onClick="{{ gNext }}" style="cursor:pointer; width:30px; height:30px; border-radius:50%; border:1.5px solid #dde0d1; display:flex; align-items:center; justify-content:center; color:#7c8274; font-weight:800; flex-shrink:0;" style-hover="border-color:#5c7a58; color:#5c7a58;">›</div>
-            <div onClick="{{ gToday }}" style="cursor:pointer; font-size:12px; font-weight:800; padding:6px 13px; border-radius:999px; border:1.5px solid #cfdcc9; color:#5c7a58; white-space:nowrap; flex-shrink:0;" style-hover="background:#e7eee4;">● Today</div>
+            <div onClick="{{ gPrev }}" style="cursor:pointer; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--txt2); font-weight:800; flex-shrink:0;" style-hover="border-color:var(--accent); color:var(--accent);">‹</div>
+            <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:20px; color:var(--txt); min-width:150px;">{{ gMonthLabel }}</div>
+            <div onClick="{{ gNext }}" style="cursor:pointer; width:30px; height:30px; border-radius:50%; border:1.5px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--txt2); font-weight:800; flex-shrink:0;" style-hover="border-color:var(--accent); color:var(--accent);">›</div>
+            <div onClick="{{ gToday }}" style="cursor:pointer; font-size:var(--fs-hint); font-weight:800; padding:6px 13px; border-radius:var(--r-pill); border:1.5px solid color-mix(in srgb,var(--accent) 28%,transparent); color:var(--accent); white-space:nowrap; flex-shrink:0;" style-hover="background:color-mix(in srgb,var(--accent) 10%,var(--card-bg));">● Today</div>
             <div style="flex:1; min-width:20px;"></div>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
               <sc-for list="{{ gLegend }}" as="lg" hint-placeholder-count="4">
-                <div style="display:flex; align-items:center; gap:5px; font-size:11.5px; font-weight:800; color:#7c8274;">
+                <div style="display:flex; align-items:center; gap:5px; font-size:11.5px; font-weight:800; color:var(--txt2);">
                   <svg viewBox="0 0 24 24" width="14" height="14"><path d="{{ lg.path }}" fill="{{ lg.color }}" fill-rule="evenodd"></path></svg>
                   <span>{{ lg.short }}</span>
                 </div>
@@ -936,7 +962,7 @@ html.sk-measure .sk-page { height: auto !important; }
             <sc-for list="{{ gWeeks }}" as="wk" hint-placeholder-count="5">
               <div style="display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); gap:4px;">
                 <sc-for list="{{ wk.cells }}" as="cl" hint-placeholder-count="7">
-                  <div title="{{ cl.title }}" style="position:relative; min-height:64px; border:1px solid {{ cl.border }}; border-radius:10px; background:{{ cl.bg }}; padding:5px 7px; overflow:hidden;">
+                  <div title="{{ cl.title }}" style="position:relative; min-height:64px; border:1px solid {{ cl.border }}; border-radius:var(--r-input); background:{{ cl.bg }}; padding:5px 7px; overflow:hidden;">
                     <div style="font-size:12.5px; font-weight:800; color:{{ cl.numColor }};">{{ cl.num }}</div>
                     <div style="position:absolute; right:4px; top:20px; display:flex; gap:1px; opacity:0.92;">
                       <sc-for list="{{ cl.marks }}" as="mk" hint-placeholder-count="0">
@@ -949,55 +975,55 @@ html.sk-measure .sk-page { height: auto !important; }
               </div>
             </sc-for>
           </div>
-          <div style="font-size:12px; color:#a8ad9f; font-weight:600; margin-top:10px;">Same glyphs and colours the calendar app draws on its own grid — edit the days below and both views follow.</div>
+          <div style="font-size:var(--fs-hint); color:var(--txt2); font-weight:600; margin-top:10px;">Same glyphs and colours the calendar app draws on its own grid — edit the days below and both views follow.</div>
         </div>
         <div style="display:flex; flex-direction:column; gap:12px;">
           <sc-for list="{{ garbageCats }}" as="g" hint-placeholder-count="5">
-            <div style="background:#fcfcf9; border:1px solid #e0e3d6; border-radius:16px; padding:14px 18px;">
+            <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-card); padding:14px 18px;">
               <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
-                <div style="width:10px; height:26px; border-radius:4px; background:{{ g.color }}; flex-shrink:0;"></div>
+                <div style="width:10px; height:26px; border-radius:var(--r-badge); background:{{ g.color }}; flex-shrink:0;"></div>
                 <div style="flex:1; min-width:150px;">
-                  <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:16px; color:#3b4038;">{{ g.jp }}</div>
-                  <div style="font-size:12.5px; color:#9aa08e; font-weight:700;">{{ g.label }}</div>
+                  <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:var(--fs-label); color:var(--txt);">{{ g.jp }}</div>
+                  <div style="font-size:12.5px; color:var(--txt2); font-weight:700;">{{ g.label }}</div>
                 </div>
                 <div style="font-size:12.5px; font-weight:800; color:{{ g.summaryColor }}; white-space:nowrap;">{{ g.summary }}</div>
-                <div onClick="{{ deleteGCat }}" data-id="{{ g.id }}" style="color:#c3c8b8; cursor:pointer; font-weight:800;" style-hover="color:#d95c8a;">✕</div>
+                <div onClick="{{ deleteGCat }}" data-id="{{ g.id }}" style="color:var(--txt2); cursor:pointer; font-weight:800;" style-hover="color:var(--sk-accent);">✕</div>
               </div>
               <sc-if value="{{ g.hasNote }}" hint-placeholder-val="{{ false }}">
-                <div style="font-size:12.5px; color:#7c8274; font-weight:600; margin:0 0 10px 22px; line-height:1.45;">{{ g.note }}</div>
+                <div style="font-size:12.5px; color:var(--txt2); font-weight:600; margin:0 0 10px 22px; line-height:1.45;">{{ g.note }}</div>
               </sc-if>
               <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:center;">
                 <div style="display:flex; gap:5px; flex-wrap:wrap;">
                   <sc-for list="{{ g.dayChips }}" as="dc" hint-placeholder-count="7">
-                    <div onClick="{{ toggleGDay }}" data-id="{{ g.id }}" data-d="{{ dc.d }}" style="cursor:pointer; font-size:12px; font-weight:800; padding:6px 11px; border-radius:999px; border:1.5px solid {{ dc.border }}; background:{{ dc.bg }}; color:{{ dc.color }};">{{ dc.label }}</div>
+                    <div onClick="{{ toggleGDay }}" data-id="{{ g.id }}" data-d="{{ dc.d }}" style="cursor:pointer; font-size:var(--fs-hint); font-weight:800; padding:6px 11px; border-radius:var(--r-pill); border:1.5px solid {{ dc.border }}; background:{{ dc.bg }}; color:{{ dc.color }};">{{ dc.label }}</div>
                   </sc-for>
                 </div>
                 <div style="display:flex; gap:5px; align-items:center; flex-wrap:wrap;">
-                  <div style="font-size:11px; font-weight:800; color:#a8ad9f; letter-spacing:0.05em;">WEEKS</div>
+                  <div style="font-size:var(--fs-caps); font-weight:800; color:var(--txt2); letter-spacing:0.05em;">WEEKS</div>
                   <sc-for list="{{ g.weekChips }}" as="wc" hint-placeholder-count="5">
-                    <div onClick="{{ toggleGWeek }}" data-id="{{ g.id }}" data-w="{{ wc.w }}" style="cursor:pointer; font-size:12px; font-weight:800; width:28px; text-align:center; padding:6px 0; border-radius:999px; border:1.5px solid {{ wc.border }}; background:{{ wc.bg }}; color:{{ wc.color }};">{{ wc.label }}</div>
+                    <div onClick="{{ toggleGWeek }}" data-id="{{ g.id }}" data-w="{{ wc.w }}" style="cursor:pointer; font-size:var(--fs-hint); font-weight:800; width:28px; text-align:center; padding:6px 0; border-radius:var(--r-pill); border:1.5px solid {{ wc.border }}; background:{{ wc.bg }}; color:{{ wc.color }};">{{ wc.label }}</div>
                   </sc-for>
                 </div>
               </div>
             </div>
           </sc-for>
         </div>
-        <div style="margin-top:18px; background:#e7eee4; border:1px solid #cfdcc9; border-radius:16px; padding:16px 18px;">
-          <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:8px;">Station rules</div>
+        <div style="margin-top:18px; background:color-mix(in srgb,var(--accent) 10%,var(--card-bg)); border:1px solid color-mix(in srgb,var(--accent) 28%,transparent); border-radius:var(--r-card); padding:16px 18px;">
+          <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:var(--fs-input); color:var(--txt); margin-bottom:8px;">Station rules</div>
           <div style="display:flex; flex-direction:column; gap:5px;">
             <sc-for list="{{ garbageRules }}" as="r" hint-placeholder-count="5">
-              <div style="font-size:13px; font-weight:600; color:#55604f; line-height:1.45;">· {{ r.text }}</div>
+              <div style="font-size:var(--fs-control); font-weight:600; color:var(--txt); line-height:1.45;">· {{ r.text }}</div>
             </sc-for>
           </div>
         </div>
-        <div style="margin-top:18px; background:#fcfcf9; border:1px dashed #cfd4c2; border-radius:16px; padding:16px 18px;">
-          <div style="font-family:'Zen Maru Gothic',sans-serif; font-weight:700; font-size:15px; color:#3f5540; margin-bottom:10px;">Add a category</div>
+        <div style="margin-top:18px; background:var(--card-bg); border:1px dashed var(--border); border-radius:var(--r-card); padding:16px 18px;">
+          <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:700; font-size:var(--fs-input); color:var(--txt); margin-bottom:10px;">Add a category</div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <input value="{{ form.gJp }}" data-field="gJp" onChange="{{ onField }}" placeholder="日本語 (e.g. 有害ごみ)" style="flex:1; min-width:150px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-            <input value="{{ form.gLabel }}" data-field="gLabel" onChange="{{ onField }}" placeholder="English (e.g. Hazardous)" style="flex:1; min-width:150px; border:1px solid #dde0d1; border-radius:10px; padding:10px 14px; font-family:'Nunito',sans-serif; font-size:14px; background:#fff; color:#3b4038; outline:none;">
-            <div onClick="{{ addGCat }}" style="background:#5c7a58; color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:999px; cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:#4a6647;">Add</div>
+            <input value="{{ form.gJp }}" data-field="gJp" onChange="{{ onField }}" placeholder="日本語 (e.g. 有害ごみ)" style="flex:1; min-width:150px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+            <input value="{{ form.gLabel }}" data-field="gLabel" onChange="{{ onField }}" placeholder="English (e.g. Hazardous)" style="flex:1; min-width:150px; border:1px solid var(--border); border-radius:var(--r-input); padding:10px 14px; font-family:var(--b-font),var(--jp-font),sans-serif; font-size:var(--fs-stats); background:var(--input-bg); color:var(--txt); outline:none;">
+            <div onClick="{{ addGCat }}" style="background:var(--btn); color:#fff; font-weight:800; font-size:13.5px; padding:10px 20px; border-radius:var(--r-pill); cursor:pointer; align-self:center; white-space:nowrap;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Add</div>
           </div>
-          <div style="font-size:12px; color:#a8ad9f; font-weight:600; margin-top:8px;">Days you set here appear on the print sheets, in the Today reminder, and get pushed to the calendar app.</div>
+          <div style="font-size:var(--fs-hint); color:var(--txt2); font-weight:600; margin-top:8px;">Days you set here appear on the print sheets, in the Today reminder, and get pushed to the calendar app.</div>
         </div>
       </div>
     </sc-if>
@@ -1331,7 +1357,7 @@ save(patch, entry) {
 
   // ---------- Supabase cloud sync (sukkiri_state) ----------
   SB_URL = 'https://wylxvmkcrexwfpjpbhyy.supabase.co';
-  BUILD = 'sk-20261019-r020';
+  BUILD = 'sk-20261019-r021';
   akLog(...a) { try { if (localStorage.getItem('akatsuki_debug') === '1') console.log('[ak]', ...a); } catch (e) {} }
   SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5bHh2bWtjcmV4d2ZwanBiaHl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2MzkxMDYsImV4cCI6MjA4NDIxNTEwNn0.6Bxo42hx4jwlJGWnfjiTpiDUsYfc1QLTN3YtrU1efak';
 
@@ -1863,10 +1889,10 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
     const D = this.D, today = new Date(); today.setHours(0, 0, 0, 0);
     const away = this.awayDays(), cycles = S.cycles || [], ack = S.riskAck || {};
     const SEV = {
-      late: { tag: 'MISSED', bg: '#fbe9f0', border: '#f2cdda', color: '#a83e66', dot: '#d95c8a' },
-      block: { tag: 'WILL CLASH', bg: '#f7edd8', border: '#e8d9b0', color: '#9a6c1c', dot: '#e0a83a' },
-      stack: { tag: 'STACKED', bg: '#f7edd8', border: '#e8d9b0', color: '#9a6c1c', dot: '#e0a83a' },
-      slip: { tag: 'SLIPPING', bg: '#eef2fa', border: '#cfdcef', color: '#2f5c8f', dot: '#5a8fc7' }
+      late: { tag: 'MISSED', bg: 'var(--sk-danger-bg)', border: 'color-mix(in srgb,var(--sk-danger) 25%,transparent)', color: 'var(--sk-danger)', dot: 'var(--sk-accent)' },
+      block: { tag: 'WILL CLASH', bg: 'var(--sk-warn-bg)', border: 'color-mix(in srgb,var(--sk-warn) 30%,transparent)', color: 'var(--sk-warn)', dot: 'var(--sk-warn-dot)' },
+      stack: { tag: 'STACKED', bg: 'var(--sk-warn-bg)', border: 'color-mix(in srgb,var(--sk-warn) 30%,transparent)', color: 'var(--sk-warn)', dot: 'var(--sk-warn-dot)' },
+      slip: { tag: 'SLIPPING', bg: 'var(--sk-info-bg)', border: 'color-mix(in srgb,var(--sk-info) 25%,transparent)', color: 'var(--sk-info)', dot: 'var(--wx-lo)' }
     };
     const byDay = {}, raw = [];
     cycles.forEach(c => {
@@ -2010,8 +2036,8 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
         timeLeft: done ? 'Finished' : fmt(left),
         sub: (done ? `${t.mins} min done · ` : `${t.mins} min · `) + (t.device === mine ? 'started here' : 'started on your ' + t.device) + ' at ' + new Date(t.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
         pct: String(Math.max(2, Math.min(100, Math.round((1 - left / Math.max(1, t.mins * 60000)) * 100)))),
-        bg: done ? '#fbe9f0' : '#e7eee4', border: done ? '#f2cdda' : '#cfdcc9',
-        color: done ? '#a83e66' : '#3f5540', bar: done ? '#d95c8a' : '#5c7a58',
+        bg: done ? 'var(--sk-danger-bg)' : 'color-mix(in srgb,var(--accent) 10%,var(--card-bg))', border: done ? 'color-mix(in srgb,var(--sk-danger) 25%,transparent)' : 'color-mix(in srgb,var(--accent) 28%,transparent)',
+        color: done ? 'var(--sk-danger)' : 'var(--accent)', bar: done ? 'var(--sk-accent)' : 'var(--accent)',
         finishLabel: t.cycleId ? '✓ Done +10' : '✓ Got it'
       };
     });
@@ -2022,7 +2048,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       timerView: view, hasTimers: view.length > 0,
       timerPresets: presets,
       timerSync: cloudOn ? 'Synced to your account — start it on the iPad, watch it finish on your phone.' : 'Sign in under Settings → Account & sync and timers follow you between devices.',
-      timerSyncColor: cloudOn ? '#5c7a58' : '#c98aa4',
+      timerSyncColor: cloudOn ? 'var(--accent)' : 'var(--sk-danger)',
       startPreset: e => { const ds = e.currentTarget.dataset; this.startTimer(ds.label, parseInt(ds.mins, 10), ''); },
       startCustom: () => {
         const f = S.form, label = (f.timerLabel || '').trim() || 'Cleaning';
@@ -2089,9 +2115,9 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
         const key = this.dkey(d.getTime()), dow = d.getDay(), isToday = key === todayKey;
         cells.push({
           num: String(d.getDate()),
-          bg: isToday ? '#f7edd8' : inM ? '#fcfcf9' : '#f4f5ec',
-          border: isToday ? '#e0a83a' : '#eaece0',
-          numColor: !inM ? '#ccd1c1' : dow === 0 ? '#c0392b' : dow === 6 ? '#2980b9' : '#3b4038',
+          bg: isToday ? 'var(--sk-warn-bg)' : inM ? 'var(--card-bg)' : 'var(--surface-sunken)',
+          border: isToday ? 'var(--sk-warn-dot)' : 'color-mix(in srgb,var(--border) 30%,transparent)',
+          numColor: !inM ? 'color-mix(in srgb,var(--txt2) 40%,transparent)' : dow === 0 ? '#c0392b' : dow === 6 ? '#2980b9' : 'var(--txt)',
           marks: cats.map(g => ({ path: this.GLYPH[g.icon] || this.GLYPH.trash, color: g.color })),
           tag: cats.map(g => (g.short || g.label || '').split(' ')[0]).join(' '),
           tagColor: cats.length ? cats[0].color : 'transparent',
@@ -2107,9 +2133,9 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       if (!cats.length) continue;
       ups.push({
         when: i === 0 ? 'TODAY · OUT BY 8:30' : i === 1 ? 'TOMORROW · BAG IT TONIGHT' : d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase(),
-        whenColor: i === 0 ? '#a83e66' : i === 1 ? '#9a6c1c' : '#9aa08e',
-        bg: i === 0 ? '#fbe9f0' : i === 1 ? '#f7edd8' : '#fcfcf9',
-        border: i === 0 ? '#f2cdda' : i === 1 ? '#e8d9b0' : '#e0e3d6',
+        whenColor: i === 0 ? 'var(--sk-danger)' : i === 1 ? 'var(--sk-warn)' : 'var(--txt2)',
+        bg: i === 0 ? 'var(--sk-danger-bg)' : i === 1 ? 'var(--sk-warn-bg)' : 'var(--card-bg)',
+        border: i === 0 ? 'color-mix(in srgb,var(--sk-danger) 25%,transparent)' : i === 1 ? 'color-mix(in srgb,var(--sk-warn) 30%,transparent)' : 'var(--border)',
         jp: cats.map(c => c.jp || c.short || c.label).join('・'),
         en: cats.map(c => c.label).join(' + '),
         bag: cats.map(c => c.note || '').filter(Boolean).join(' · '),
@@ -2120,7 +2146,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
     return {
       gMonthLabel: base.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
       gWeeks: weeks, gUpcoming: ups, hasUpcoming: ups.length > 0,
-      gDow: DOWL.map((label, i) => ({ label, color: i === 0 ? '#c0392b' : i === 6 ? '#2980b9' : '#a8ad9f' })),
+      gDow: DOWL.map((label, i) => ({ label, color: i === 0 ? '#c0392b' : i === 6 ? '#2980b9' : 'var(--txt2)' })),
       gLegend: this.gcats().map(g => ({ path: this.GLYPH[g.icon] || this.GLYPH.trash, color: g.color, short: (g.short || g.label || '').split(' ')[0] })),
       gPrev: () => this.setState({ gMon: (S.gMon || 0) - 1 }),
       gNext: () => this.setState({ gMon: (S.gMon || 0) + 1 }),
@@ -2212,22 +2238,22 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
     const refillView = sup.filter(p => p.kind === 'refill').map(p => {
       const days = Math.ceil(((p.last || 0) + p.every * D - now) / D);
       let dueLabel, chipBg, chipColor;
-      if (days < 0) { dueLabel = `Overdue ${-days}d`; chipBg = '#fbe9f0'; chipColor = '#a83e66'; }
-      else if (days === 0) { dueLabel = 'Restock today'; chipBg = '#f7edd8'; chipColor = '#9a6c1c'; }
-      else { dueLabel = `Restock in ${days}d`; chipBg = '#e7eee4'; chipColor = '#5c7a58'; }
+      if (days < 0) { dueLabel = `Overdue ${-days}d`; chipBg = 'var(--sk-danger-bg)'; chipColor = 'var(--sk-danger)'; }
+      else if (days === 0) { dueLabel = 'Restock today'; chipBg = 'var(--sk-warn-bg)'; chipColor = 'var(--sk-warn)'; }
+      else { dueLabel = `Restock in ${days}d`; chipBg = 'color-mix(in srgb,var(--accent) 10%,var(--card-bg))'; chipColor = 'var(--accent)'; }
       return { id: p.id, name: p.name, sub: `Every ${p.every} days · last restock ${this.fmtDate(p.last || now)}`, dueLabel, chipBg, chipColor, priceLabel: '¥' + (p.price || 0).toLocaleString(), _d: days,
-        autoLabel: p.auto ? 'Auto-request on' : 'Auto-request', autoBg: p.auto ? '#3f5540' : '#fff', autoColor: p.auto ? '#fff' : '#7c8274', autoBorder: p.auto ? '#3f5540' : '#cfd4c2' };
+        autoLabel: p.auto ? 'Auto-request on' : 'Auto-request', autoBg: p.auto ? 'var(--accent)' : '#fff', autoColor: p.auto ? '#fff' : 'var(--txt2)', autoBorder: p.auto ? 'var(--accent)' : 'var(--border)' };
     }).sort((a, b) => a._d - b._d);
     const onetimeView = sup.filter(p => p.kind === 'onetime' && !p.owned).map(p => ({
       id: p.id, name: p.name, priceLabel: '¥' + (p.price || 0).toLocaleString(),
       sub: p.replaceMonths ? `Replace every ${p.replaceMonths} months once owned` : 'Buy once'
     }));
     const ownedView = sup.filter(p => p.kind === 'onetime' && p.owned).map(p => {
-      let replLabel = '', replColor = '#9aa08e';
+      let replLabel = '', replColor = 'var(--txt2)';
       if (p.replaceMonths && p.ownedAt) {
         const due = new Date(p.ownedAt); due.setMonth(due.getMonth() + p.replaceMonths);
         const d = Math.ceil((due - now) / D);
-        replLabel = d < 0 ? '· replace now' : `· replace in ${d}d`; replColor = d < 30 ? '#a83e66' : '#9aa08e';
+        replLabel = d < 0 ? '· replace now' : `· replace in ${d}d`; replColor = d < 30 ? 'var(--sk-danger)' : 'var(--txt2)';
       }
       return { id: p.id, name: p.name, replLabel, replColor };
     });
@@ -2289,9 +2315,9 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
         const clash = cyc.length && dry ? dry : null;
         cells.push({
           key, num: String(d.getDate()),
-          bg: sel ? '#e7eee4' : isToday ? '#f7edd8' : clash ? clash.bg : inM ? '#fcfcf9' : '#f4f5ec',
-          border: sel ? '#8aa882' : isToday ? '#e0a83a' : clash ? (clash.verdict === 'good' ? '#cfe3d2' : clash.verdict === 'ok' ? '#e8d9b0' : '#f2cdda') : '#eaece0',
-          numColor: !inM ? '#ccd1c1' : dow === 0 ? '#c0392b' : dow === 6 ? '#2980b9' : '#3b4038',
+          bg: sel ? 'color-mix(in srgb,var(--accent) 10%,var(--card-bg))' : isToday ? 'var(--sk-warn-bg)' : clash ? clash.bg : inM ? 'var(--card-bg)' : 'var(--surface-sunken)',
+          border: sel ? 'var(--accent)' : isToday ? 'var(--sk-warn-dot)' : clash ? (clash.verdict === 'good' ? 'color-mix(in srgb,var(--accent) 28%,transparent)' : clash.verdict === 'ok' ? 'color-mix(in srgb,var(--sk-warn) 30%,transparent)' : 'color-mix(in srgb,var(--sk-danger) 25%,transparent)') : 'color-mix(in srgb,var(--border) 30%,transparent)',
+          numColor: !inM ? 'color-mix(in srgb,var(--txt2) 40%,transparent)' : dow === 0 ? '#c0392b' : dow === 6 ? '#2980b9' : 'var(--txt)',
           /* Garbage reads as a pale watermark filling the cell, like the calendar app —
              it is a hint you notice, not a badge competing with the date. */
           marks: cats.map(g => ({ path: this.GLYPH[g.icon] || this.GLYPH.trash, color: g.color, wm: cats.length > 2 ? 22 : cats.length > 1 ? 27 : 34 })),
@@ -2315,7 +2341,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
           dryShow: clash ? 'block' : 'none',
           dryColor: clash ? clash.color : 'transparent',
           dryScore: clash ? String(clash.best) : '',
-          noteDot: mine ? '#d95c8a' : (logBy[key] || []).length && inM ? '#c9cfbe' : 'transparent',
+          noteDot: mine ? 'var(--sk-accent)' : (logBy[key] || []).length && inM ? 'var(--txt2)' : 'transparent',
           title: [
             cats.map(g => (g.jp ? g.jp + ' / ' : '') + g.label).join(' · '),
             cyc.map(c => c.name).join(', '),
@@ -2338,8 +2364,8 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
         icon: wx ? wx.icon : '·',
         hi: wx ? wx.tmax + '°' : '–', lo: wx ? wx.tmin + '°' : '',
         rh: wx && wx.rh != null ? wx.rh + '% RH' : '',
-        markPath: dry ? this.DRY_GLYPH[dry.verdict] : '', markShow: dry ? 'block' : 'none', markColor: dry ? dry.color : '#c9cfbe',
-        bg: dry ? dry.bg : '#fcfcf9', border: dry ? (dry.verdict === 'good' ? '#cfe3d2' : dry.verdict === 'ok' ? '#e8d9b0' : '#f2cdda') : '#eaece0',
+        markPath: dry ? this.DRY_GLYPH[dry.verdict] : '', markShow: dry ? 'block' : 'none', markColor: dry ? dry.color : 'var(--txt2)',
+        bg: dry ? dry.bg : 'var(--card-bg)', border: dry ? (dry.verdict === 'good' ? 'color-mix(in srgb,var(--accent) 28%,transparent)' : dry.verdict === 'ok' ? 'color-mix(in srgb,var(--sk-warn) 30%,transparent)' : 'color-mix(in srgb,var(--sk-danger) 25%,transparent)') : 'color-mix(in srgb,var(--border) 30%,transparent)',
         score: dry ? String(dry.best) : '', use: dry ? dry.use : ''
       });
     }
@@ -2370,7 +2396,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
     const auto = (logBy[selKey] || []).map(e => ({
       id: 'a' + e.ts, text: e.text,
       time: new Date(e.ts).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-      color: e.kind === 'penalty' ? '#b03a4a' : e.kind === 'inspect' ? '#2f7d4f' : '#7c8274'
+      color: e.kind === 'penalty' ? '#b03a4a' : e.kind === 'inspect' ? '#2f7d4f' : 'var(--txt2)'
     }));
     const mineList = (notes[selKey] || []).map(n => ({
       id: n.id, text: n.text,
@@ -2381,7 +2407,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       isCal: S.screen === 'cal',
       cMonthLabel: base.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
       cWeeks: weeks,
-      cDow: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((label, i) => ({ label, color: i === 0 ? '#c0392b' : i === 6 ? '#2980b9' : '#a8ad9f' })),
+      cDow: ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((label, i) => ({ label, color: i === 0 ? '#c0392b' : i === 6 ? '#2980b9' : 'var(--txt2)' })),
       cPrev: () => this.setState({ cMon: (S.cMon || 0) - 1 }),
       cNext: () => this.setState({ cMon: (S.cMon || 0) + 1 }),
       cToday: () => this.setState({ cMon: 0, cSel: todayKey }),
@@ -2398,8 +2424,8 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
         size: t.kind === 'b' ? 19 : 16,
         inner: t.kind === 'b' ? '#2980b922' : 'transparent',
         innerPad: t.kind === 'b' ? '3px 4px' : '0',
-        bg: theme === t.id ? '#e7eee4' : '#fcfcf9',
-        border: theme === t.id ? '#5c7a58' : '#e0e3d6'
+        bg: theme === t.id ? 'color-mix(in srgb,var(--accent) 10%,var(--card-bg))' : 'var(--card-bg)',
+        border: theme === t.id ? 'var(--accent)' : 'var(--border)'
       })),
       setSymTheme: e => this.save({ cTheme: e.currentTarget.dataset.id }),
       dryLegendGood: this.DRY_GLYPH.good, dryLegendOk: this.DRY_GLYPH.ok, dryLegendBad: this.DRY_GLYPH.bad,
@@ -2417,8 +2443,8 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       selWxLine: selWx ? `${selWx.icon} ${selWx.word} · ${selWx.tmax}° / ${selWx.tmin}°${selWx.rh != null ? ' · ' + selWx.rh + '% RH' : ''}${selWx.sun ? ' · ' + selWx.sun + 'h sun' : ''}` : 'No forecast for this day.',
       selDryPath: selDry ? this.DRY_GLYPH[selDry.verdict] : '',
       selDryShow: selDry ? 'block' : 'none',
-      selDryColor: selDry ? selDry.color : '#a8ad9f',
-      selDryBg: selDry ? selDry.bg : '#f4f5ec',
+      selDryColor: selDry ? selDry.color : 'var(--txt2)',
+      selDryBg: selDry ? selDry.bg : 'var(--surface-sunken)',
       selDryScore: selDry ? selDry.best + '/100' : '—',
       selDryWhy: selDry ? selDry.why : 'Drying advice needs a forecast.',
       selDrySplit: selDry ? `On the line ${selDry.out}/100 · indoors ${selDry.in}/100` : '',
@@ -2439,7 +2465,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
           color: c.color || this.CAL_COL[(n + 4) % this.CAL_COL.length],
           every: 'every ' + c.days + 'd',
           warn: bad ? (need === 'sun' ? 'needs real sun' : 'poor drying') : '',
-          warnBg: bad ? '#fbe9f0' : 'transparent', warnColor: bad ? '#a83e66' : 'transparent'
+          warnBg: bad ? 'var(--sk-danger-bg)' : 'transparent', warnColor: bad ? 'var(--sk-danger)' : 'transparent'
         };
       }),
       hasSelCycles: selCyc.length > 0,
@@ -2482,8 +2508,8 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       locStatus: locked
         ? `Owned by "${loc.owner}" — edit it there. Sukkiri reads it for weather and garbage rules.`
         : 'Sukkiri is editing this for now. When your home-profile app claims it, these fields turn read-only automatically.',
-      locStatusBg: locked ? '#f4f5ec' : '#f7edd8',
-      locStatusColor: locked ? '#7c8274' : '#9a6c1c',
+      locStatusBg: locked ? 'var(--surface-sunken)' : 'var(--sk-warn-bg)',
+      locStatusColor: locked ? 'var(--txt2)' : 'var(--sk-warn)',
       onLocLabel: setField('label'), onLocLat: setField('lat'), onLocLon: setField('lon'),
       onLocTz: setField('tz'), onLocWard: setField('ward'),
       saveLoc: () => {
@@ -2521,15 +2547,15 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
         summary: (g.days || []).length
           ? (g.days || []).map(d => DOW[d]).join(', ') + ((g.weeks || []).length ? ' · ' + (g.weeks || []).slice().sort().map(w => w + (w === 1 ? 'st' : w === 2 ? 'nd' : w === 3 ? 'rd' : 'th')).join(' & ') + ' week' : ' · every week')
           : 'not set',
-        summaryColor: (g.days || []).length ? '#5c7a58' : '#c98aa4',
+        summaryColor: (g.days || []).length ? 'var(--accent)' : 'var(--sk-danger)',
         note: g.note || '', hasNote: !!g.note,
         dayChips: [1, 2, 3, 4, 5, 6, 0].map(d => {
           const on = (g.days || []).includes(d);
-          return { d: String(d), label: DOW[d], bg: on ? g.color : 'transparent', color: on ? '#fff' : '#9aa08e', border: on ? g.color : '#dde0d1' };
+          return { d: String(d), label: DOW[d], bg: on ? g.color : 'transparent', color: on ? '#fff' : 'var(--txt2)', border: on ? g.color : 'var(--border)' };
         }),
         weekChips: [1, 2, 3, 4, 5].map(w => {
           const on = (g.weeks || []).includes(w);
-          return { w: String(w), label: String(w), bg: on ? '#3f5540' : 'transparent', color: on ? '#fff' : '#9aa08e', border: on ? '#3f5540' : '#dde0d1' };
+          return { w: String(w), label: String(w), bg: on ? 'var(--accent)' : 'transparent', color: on ? '#fff' : 'var(--txt2)', border: on ? 'var(--accent)' : 'var(--border)' };
         })
       })),
       toggleGDay: e => {
@@ -2557,14 +2583,14 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
         }, { kind: 'change', text: 'Added garbage category ' + label });
       },
       hasGarbReminder: !!reminder, garbReminder: reminder, garbReminderJp: remJp,
-      garbReminderBg: remKind === 'today' ? '#fbe9f0' : '#f7edd8',
-      garbReminderBorder: remKind === 'today' ? '#f2cdda' : '#e8d9b0',
-      garbReminderColor: remKind === 'today' ? '#a83e66' : '#9a6c1c'
+      garbReminderBg: remKind === 'today' ? 'var(--sk-danger-bg)' : 'var(--sk-warn-bg)',
+      garbReminderBorder: remKind === 'today' ? 'color-mix(in srgb,var(--sk-danger) 25%,transparent)' : 'color-mix(in srgb,var(--sk-warn) 30%,transparent)',
+      garbReminderColor: remKind === 'today' ? 'var(--sk-danger)' : 'var(--sk-warn)'
     };
   }
 
   logVals(S) {
-    const dots = { done: '#5c7a58', change: '#2980b9', inspect: '#d95c8a', supply: '#e67e22', penalty: '#a83e66', shop: '#8e44ad', info: '#9aa08e' };
+    const dots = { done: 'var(--accent)', change: '#2980b9', inspect: 'var(--sk-accent)', supply: '#e67e22', penalty: 'var(--sk-danger)', shop: '#8e44ad', info: 'var(--txt2)' };
     const logView = (S.log || []).map((l, i) => ({
       id: String(i), text: l.text, dot: dots[l.kind] || dots.info,
       when: new Date(l.ts).toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -2574,7 +2600,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       logIntro: `${logView.length} entries · cycles reach the calendar through calapp_sukkiri on this device and, when signed in, the calendar_app_sukkiri table on every device${S.lastPush ? ' · last push ' + this.fmtDate(S.lastPush) : ''}.`,
       cloudSignedIn: S.cloud.status === 'on' || S.cloud.status === 'busy',
       cloudSignedOut: S.cloud.status === 'off' || S.cloud.status === 'err',
-      cloudDot: { on: '#5c7a58', busy: '#e67e22', err: '#a83e66', off: '#c3c8b8' }[S.cloud.status] || '#c3c8b8',
+      cloudDot: { on: 'var(--accent)', busy: '#e67e22', err: 'var(--sk-danger)', off: 'var(--txt2)' }[S.cloud.status] || 'var(--txt2)',
       cloudTitle: S.cloud.email ? 'Cloud backup · ' + S.cloud.email : 'Cloud backup',
       cloudSub: S.cloud.msg,
       buildId: this.BUILD,
@@ -2592,8 +2618,8 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       signInLabel: S.cloud.status === 'busy' && !S.cloud.email ? 'Signing in…' : 'Sign in',
       hasLoginMsg: S.cloud.status === 'err' || (S.cloud.status === 'off' && /confirm|Signed out/.test(S.cloud.msg || '')),
       loginMsg: /Invalid login credentials/.test(S.cloud.msg || '') ? 'That email and password don\'t match. If you normally sign in with Google, use Continue with Google below.' : S.cloud.msg,
-      loginMsgColor: S.cloud.status === 'err' ? '#a83e66' : '#5c7a58',
-      loginMsgBg: S.cloud.status === 'err' ? '#fbe9f0' : '#e8efe4',
+      loginMsgColor: S.cloud.status === 'err' ? 'var(--sk-danger)' : 'var(--accent)',
+      loginMsgBg: S.cloud.status === 'err' ? 'var(--sk-danger-bg)' : 'var(--sk-ok-bg)',
       pushNow: async () => {
         const ok = this.pushCal(this.state);
         const cloud = await this.syncCal(this.state, true);
@@ -2707,7 +2733,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       ['deep', 'Deep clean'], ['shop', 'Shopping'], ['supplies', 'Supplies'], ['garbage', 'Garbage'], ['print', 'Print'], ['settings', 'Settings']
     ].map(([id, label]) => {
       const on = S.screen === id;
-      return { id, label, bg: on ? '#e7eee4' : 'transparent', color: on ? '#3f5540' : '#7c8274', dot: on ? '#d95c8a' : '#d6dac9' };
+      return { id, label, bg: on ? 'color-mix(in srgb,var(--accent) 10%,var(--card-bg))' : 'transparent', color: on ? 'var(--accent)' : 'var(--txt2)', dot: on ? 'var(--sk-accent)' : 'color-mix(in srgb,var(--txt2) 40%,transparent)' };
     });
 
     const ICON = {
@@ -2732,9 +2758,9 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       const due = this.dueAt(c).getTime();
       const days = Math.round((due - new Date().setHours(0, 0, 0, 0)) / D);
       let dueLabel, chipBg, chipColor;
-      if (days < 0) { dueLabel = `Overdue by ${-days}d`; chipBg = '#fbe9f0'; chipColor = '#a83e66'; }
-      else if (days === 0) { dueLabel = 'Due today'; chipBg = '#f7edd8'; chipColor = '#9a6c1c'; }
-      else { dueLabel = `Due in ${days}d`; chipBg = '#e7eee4'; chipColor = '#5c7a58'; }
+      if (days < 0) { dueLabel = `Overdue by ${-days}d`; chipBg = 'var(--sk-danger-bg)'; chipColor = 'var(--sk-danger)'; }
+      else if (days === 0) { dueLabel = 'Due today'; chipBg = 'var(--sk-warn-bg)'; chipColor = 'var(--sk-warn)'; }
+      else { dueLabel = `Due in ${days}d`; chipBg = 'color-mix(in srgb,var(--accent) 10%,var(--card-bg))'; chipColor = 'var(--accent)'; }
       const sug = this.minsFor(c.name);
       /* Drying-dependent cycles carry the weather verdict for their due day, plus the
          better day to move to — futons demand real sun, laundry only dry air. */
@@ -2757,16 +2783,16 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       }
       return { id: c.id, name: c.name, sub: `Every ${c.days} days · last done ${this.fmtDate(c.last)}`,
         dryFlag, dryFix, hasDry: !!dryFlag,
-        dryBg: dryFix ? '#fbe9f0' : '#e6f2e7', dryColor: dryFix ? '#a83e66' : '#2f7d4f',
+        dryBg: dryFix ? 'var(--sk-danger-bg)' : 'var(--sk-ok-bg)', dryColor: dryFix ? 'var(--sk-danger)' : '#2f7d4f',
         picking: S.timerPick === c.id,
         pickOpts: [10, 15, 20, 25, 30, 45, 60, 90].map(mn => ({
           mins: String(mn), label: mn === sug ? mn + 'm ·' : mn + 'm',
-          bg: mn === sug ? '#e7eee4' : '#fcfcf9', border: mn === sug ? '#5c7a58' : '#dde0d1',
-          color: mn === sug ? '#3f5540' : '#7c8274'
+          bg: mn === sug ? 'color-mix(in srgb,var(--accent) 10%,var(--card-bg))' : 'var(--card-bg)', border: mn === sug ? 'var(--accent)' : 'var(--border)',
+          color: mn === sug ? 'var(--accent)' : 'var(--txt2)'
         })),
         wkMark: c.wk ? '🗓 weekend' : '🗓 any day',
-        wkBg: c.wk ? '#e7eee4' : 'transparent', wkColor: c.wk ? '#3f5540' : '#a8ad9f', wkBorder: c.wk ? '#cfdcc9' : '#dde0d1',
-        dueLabel, chipBg, chipColor, _days: days, icon: iconFor(c.name), iconBg: days < 0 ? '#fbe9f0' : '#eef0e4', iconColor: days < 0 ? '#a83e66' : '#5c7a58' };
+        wkBg: c.wk ? 'color-mix(in srgb,var(--accent) 10%,var(--card-bg))' : 'transparent', wkColor: c.wk ? 'var(--accent)' : 'var(--txt2)', wkBorder: c.wk ? 'color-mix(in srgb,var(--accent) 28%,transparent)' : 'var(--border)',
+        dueLabel, chipBg, chipColor, _days: days, icon: iconFor(c.name), iconBg: days < 0 ? 'var(--sk-danger-bg)' : 'var(--surface-sunken)', iconColor: days < 0 ? 'var(--sk-danger)' : 'var(--accent)' };
     }).sort((a, b) => a._days - b._days);
 
     const overdue = tasks.filter(t => t._days <= 0).length;
@@ -2791,7 +2817,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
 
     const ready = S.areas.filter(a => a.ideal && a.current).length;
 
-    const scoreColors = s => s >= 80 ? ['#e7eee4', '#3f5540'] : s >= 60 ? ['#f7edd8', '#9a6c1c'] : ['#fbe9f0', '#a83e66'];
+    const scoreColors = s => s >= 80 ? ['color-mix(in srgb,var(--accent) 10%,var(--card-bg))', 'var(--accent)'] : s >= 60 ? ['var(--sk-warn-bg)', 'var(--sk-warn)'] : ['var(--sk-danger-bg)', 'var(--sk-danger)'];
 
     const reportsView = S.reports.map(r => {
       const [bg, col] = scoreColors(r.overall);
@@ -2820,8 +2846,8 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
         progress: `${done}/${h.tasks.length} done`,
         tasks: h.tasks.map((t, idx) => ({
           idx: String(idx), name: t.name, mark: t.done ? '✓' : '',
-          circleBorder: t.done ? '#5c7a58' : '#cfd4c2', circleBg: t.done ? '#5c7a58' : 'transparent',
-          color: t.done ? '#9aa08e' : '#3b4038', deco: t.done ? 'line-through' : 'none'
+          circleBorder: t.done ? 'var(--accent)' : 'var(--border)', circleBg: t.done ? 'var(--accent)' : 'transparent',
+          color: t.done ? 'var(--txt2)' : 'var(--txt)', deco: t.done ? 'line-through' : 'none'
         }))
       };
     });
@@ -2834,12 +2860,12 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
         id: it.id, name: it.name, priceLabel: '¥' + (it.price || 0).toLocaleString(),
         link: it.link, hasLink: !!it.link, suggested: !!it.suggested, isAuto: !!it.autoReq,
         mark: it.bought ? '✓' : '', opacity: it.bought ? '0.55' : '1',
-        circleBorder: it.bought ? '#5c7a58' : '#cfd4c2', circleBg: it.bought ? '#5c7a58' : 'transparent',
+        circleBorder: it.bought ? 'var(--accent)' : 'var(--border)', circleBg: it.bought ? 'var(--accent)' : 'transparent',
         deco: it.bought ? 'line-through' : 'none',
-        canSel: !it.bought && !open, selMark: it.sel ? '✓' : '', selBorder: it.sel ? '#d95c8a' : '#cfd4c2', selBg: it.sel ? '#d95c8a' : '#fff',
+        canSel: !it.bought && !open, selMark: it.sel ? '✓' : '', selBorder: it.sel ? 'var(--sk-accent)' : 'var(--border)', selBg: it.sel ? 'var(--sk-accent)' : '#fff',
         hasSt: !!stLabel && !it.bought, stLabel,
-        stColor: { ok: '#5c7a58', bad: '#a83e66', wait: '#b3641c', mute: '#7c8274' }[tone],
-        stBg: { ok: '#e8efe4', bad: '#fbe9f0', wait: '#fdf1e4', mute: '#eef0e8' }[tone]
+        stColor: { ok: 'var(--accent)', bad: 'var(--sk-danger)', wait: 'var(--sk-warn)', mute: 'var(--txt2)' }[tone],
+        stBg: { ok: 'var(--sk-ok-bg)', bad: 'var(--sk-danger-bg)', wait: 'var(--sk-warn-bg)', mute: 'var(--surface-sunken)' }[tone]
       };
     });
     const pending = S.shop.filter(i => !i.bought).reduce((s, i) => s + (i.price || 0), 0);
@@ -2870,14 +2896,14 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
         if (S.reports.length) h = Math.round((h + S.reports[0].overall) / 2);
         h = Math.max(5, Math.min(100, h));
         const hero = h >= 90 ? 'Your room is sukkiri ✧' : h >= 60 ? 'Almost there — small tidy-ups today' : 'Time for a rescue mission';
-        return { health: String(h), ringGrad: `#d95c8a ${Math.round(h * 3.6)}deg, rgba(255,255,255,0.75) 0deg`, heroTitle: strict ? `Room health: ${h}/100` : hero };
+        return { health: String(h), ringGrad: `var(--sk-accent) ${Math.round(h * 3.6)}deg, color-mix(in srgb,var(--card-bg) 75%,transparent) 0deg`, heroTitle: strict ? `Room health: ${h}/100` : hero };
       })(),
       sparkleOp: overdue === 0 ? '1' : '0',
       dustOp: overdue > 0 ? '0.9' : '0',
       statCards: [
-        { nav: 'today', value: `${tasks.length - overdue}/${tasks.length}`, label: 'cycles on track', color: overdue ? '#a83e66' : '#3f5540', icon: ICON.check, iconBg: overdue ? '#fbe9f0' : '#e7eee4' },
-        { nav: 'checkin', value: nextCheck.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + nextCheck.getDate(), label: 'next photo check-in', color: '#d95c8a', icon: ICON.camera, iconBg: '#fbe9f0' },
-        { nav: 'reports', value: String(S.reports.length), label: 'inspection reports', color: '#5c7a58', icon: ICON.doc, iconBg: '#e7eee4' }
+        { nav: 'today', value: `${tasks.length - overdue}/${tasks.length}`, label: 'cycles on track', color: overdue ? 'var(--sk-danger)' : 'var(--accent)', icon: ICON.check, iconBg: overdue ? 'var(--sk-danger-bg)' : 'color-mix(in srgb,var(--accent) 10%,var(--card-bg))' },
+        { nav: 'checkin', value: nextCheck.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + nextCheck.getDate(), label: 'next photo check-in', color: 'var(--sk-accent)', icon: ICON.camera, iconBg: 'var(--sk-danger-bg)' },
+        { nav: 'reports', value: String(S.reports.length), label: 'inspection reports', color: 'var(--accent)', icon: ICON.doc, iconBg: 'color-mix(in srgb,var(--accent) 10%,var(--card-bg))' }
       ],
       hasNotice: !!S.notice, noticeText: S.notice,
       hasSaveErr: !!S.saveErr, saveErrText: S.saveErr || '',
@@ -2979,12 +3005,12 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
           summary: `${r.auto ? '🔁 ' : ''}${r.count || 0} item${r.count === 1 ? '' : 's'} · ¥${(r.totalYen || 0).toLocaleString()} — ${(r.items || []).map(i => i.name).join(', ')}`,
           when: r.requestedAt ? this.fmtDate(Date.parse(r.requestedAt)) : '',
           hasErr: r.sent === 'error' && !!r.msg, msg: r.msg || '',
-          color: { ok: '#5c7a58', bad: '#a83e66', wait: '#b3641c', mute: '#7c8274' }[tone],
-          bg: { ok: '#e8efe4', bad: '#fbe9f0', wait: '#fdf1e4', mute: '#eef0e8' }[tone] };
+          color: { ok: 'var(--accent)', bad: 'var(--sk-danger)', wait: 'var(--sk-warn)', mute: 'var(--txt2)' }[tone],
+          bg: { ok: 'var(--sk-ok-bg)', bad: 'var(--sk-danger-bg)', wait: 'var(--sk-warn-bg)', mute: 'var(--surface-sunken)' }[tone] };
       }),
       hasCostReqs: (S.costReqs || []).length > 0,
       sendLabel: selCount ? `Send ${selCount} selected · ¥${selYen.toLocaleString()}` : 'Send selected to cost app',
-      sendBg: selCount ? '#d95c8a' : '#e9c9d6', sendBorder: selCount ? '#d95c8a' : '#e9c9d6',
+      sendBg: selCount ? 'var(--sk-accent)' : 'color-mix(in srgb,var(--sk-accent) 35%,var(--card-bg))', sendBorder: selCount ? 'var(--sk-accent)' : 'color-mix(in srgb,var(--sk-accent) 35%,var(--card-bg))',
       hasSelectable: S.shop.some(i => !i.bought && !this.reqOpen(i)),
       toggleBought: e => { const id = e.currentTarget.dataset.id; this.save({ shop: S.shop.map(i => i.id === id ? { ...i, bought: !i.bought, boughtAt: !i.bought ? Date.now() : null } : i) }); },
       budgetVal: String(S.budget ?? 5000),
@@ -3003,7 +3029,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       remainColor: (() => {
         const m = new Date(); m.setDate(1); m.setHours(0, 0, 0, 0);
         const spent = S.shop.filter(i => i.bought && (i.boughtAt || 0) >= m.getTime()).reduce((s, i) => s + (i.price || 0), 0);
-        return (S.budget ?? 5000) - spent >= 0 ? '#5c7a58' : '#a83e66';
+        return (S.budget ?? 5000) - spent >= 0 ? 'var(--accent)' : 'var(--sk-danger)';
       })(),
       sendToCostApp: () => {
         const sel = S.shop.filter(i => !i.bought && i.sel && !this.reqOpen(i));
