@@ -6,6 +6,10 @@
  *
  * Requires R001 + R002 + R003.
  *
+ * Oct 1 (sk-20261001-s4b2): cycle rows carry wk; syncCycles/syncGarbage take
+ * { force } — the manual "Push cycles to calendar" rewrites every row, bypassing
+ * the per-row dirty check (a stale seen-sig must never block a manual push).
+ *
  * This file exists to fix two things the card names:
  *
  * 1. pushCal/pushCalCloud fire on EVERY save with no dirty check. push() below
@@ -28,9 +32,9 @@
     const mark = (o) => localStorage.setItem(SEEN, JSON.stringify(o));
 
     /** Write one owned item, but only if its content changed. */
-    async function push(path, key, value) {
+    async function push(path, key, value, force) {
       const s = seen(), k = path + '/' + key, sig = h(JSON.stringify(value));
-      if (s[k] === sig) return false;
+      if (!force && s[k] === sig) return false;
       await hub.put(DOC, path, key, value);
       s[k] = sig; mark(s); return true;
     }
@@ -39,6 +43,14 @@
       await hub.remove(DOC, path, key);
       delete s[k]; mark(s); return true;
     }
+    /** First Phase-B run on a device: learn the rows R009's trigger made for Sukkiri
+     *  (cycles keyed from the old payload, garbage as one whole row) so the first
+     *  sync removes any that don't match today's keys — no duplicates left behind. */
+    async function seed() {
+      const s = seen(); if (s.__seeded) return;
+      for (const k of await hub.keys(DOC)) if (!(k in s)) s[k] = 'seed';
+      s.__seeded = 1; mark(s);
+    }
 
     const api = {
       hub,
@@ -46,17 +58,18 @@
       /** Call from save() instead of pushCal/pushCalCloud. Diffs, writes the
        *  changed cycles, and explicitly removes the ones that disappeared —
        *  a delete is no longer just an omission. Returns rows written. */
-      async syncCycles(cycles, dueKey, palette) {
+      async syncCycles(cycles, dueKey, palette, o = {}) {
+        await seed();
         let n = 0;
         const live = new Set();
         for (let i = 0; i < cycles.length; i++) {
           const c = cycles[i], id = 'sk_' + c.id;
           live.add(id);
           const ok = await push('cycles', id, {
-            id, name: c.name, every: c.days, kind: 'home',
+            id, name: c.name, every: c.days, kind: 'home', wk: !!c.wk,
             anchor: dueKey(c),
             color: c.color || (palette ? palette[(i + 4) % palette.length] : null)
-          });
+          }, o.force);
           if (ok) n++;
         }
         for (const k of Object.keys(seen())) {
@@ -67,8 +80,9 @@
 
       /** Only publish rules when Sukkiri actually has some — otherwise
        *  Calendar's own rules must stand (the card's condition, preserved). */
-      async syncGarbage(garbage) {
+      async syncGarbage(garbage, o = {}) {
         if (!garbage || !garbage.some(g => g.days && g.days.length)) return 0;
+        await seed();
         let n = 0;
         const live = new Set();
         for (const g of garbage) {
@@ -76,7 +90,7 @@
           const ok = await push('garbage', g.id, {
             id: g.id, label: g.jp ? g.jp + ' / ' + g.label : g.label,
             short: g.short, icon: g.icon, days: g.days, weeks: g.weeks || [], color: g.color
-          });
+          }, o.force);
           if (ok) n++;
         }
         for (const k of Object.keys(seen())) {

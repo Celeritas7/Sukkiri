@@ -13,6 +13,8 @@
  * publish → { seq, status: pending|skipped|closed|queued, code, delivery, reply }.
  * A consume handler may return { defer: 'reason' } — the row stays pending, retried with back-off.
  * Works against pre-R017 SQL too (old messages still match; defer needs R017).
+ * Sep 26: doc() merges a path held by two owners (calapp_sukkiri.cycles) instead of
+ * keeping only the last; returns rows for per-owner reads. keys() lists my live rows.
  */
 (function () {
   const hash = (s) => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); };
@@ -114,8 +116,20 @@
         const { data, error } = await supabase.from('akatsuki_docs').select('path,owner_app,items,scalar,seq').eq('doc', doc);
         if (error) throw new Error(error.message);
         const out = {}, owners = {};
-        for (const r of data) { out[r.path] = r.items ?? r.scalar; owners[r.path] = r.owner_app; }
-        return { value: out, owners };
+        for (const r of data) {
+          const v = r.items ?? r.scalar;
+          if (owners[r.path] && Array.isArray(out[r.path]) && Array.isArray(v)) {
+            out[r.path] = out[r.path].concat(v); owners[r.path] += ',' + r.owner_app;
+          } else { out[r.path] = v; owners[r.path] = r.owner_app; }
+        }
+        return { value: out, owners, rows: data };
+      },
+      /** Live item keys this app owns in a doc, as 'path/item_key' — seeds a diff cache. */
+      async keys(doc) {
+        const { data, error } = await supabase.from('akatsuki_state').select('path,item_key')
+          .match({ doc, owner_app: app }).is('deleted_at', null);
+        if (error) throw new Error(error.message);
+        return data.map(r => r.path + '/' + r.item_key);
       },
 
       /** Cached source data (one fetch, many consumers). */
