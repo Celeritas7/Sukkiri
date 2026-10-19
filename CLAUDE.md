@@ -3,7 +3,13 @@
 Follow AKATSUKI.md for anything touching the hub.
 
 ## Design system
-Bound: **My Calendar Design System** (`_ds/my-calendar-design-system-4b262086.../`). Every DC must load the bundle + token stylesheets in `<helmet>` and use `var(--*)` tokens / DS components. Emoji is the icon system; sentence case; warm second-person voice.
+Bound: **My Calendar Design System** (`_ds/my-calendar-design-system-4b262086.../`). Every DC must load the token stylesheets in `<helmet>` and use `var(--*)` tokens / DS components. Emoji is the icon system; sentence case; warm second-person voice.
+**Phase 1 (R021) decisions — see `docs/phase1-audit.md`:**
+- Load **tokens only** (`tokens/colors|typography|shape|themes.css`). **Never load `_ds_bundle.js`**: it embeds the calendar's `app.js`/`sukkiri.js`, which would open a second Supabase client and bind global key handlers. `tokens/fonts.css` (24 families) is skipped; the helmet requests DM Serif Display + Nunito + Zen Maru Gothic directly.
+- Theme defaults to **`data-theme="9"` Forest Morning** on `<html>` (decision 1a). **Settings → Appearance** offers **Classic** (`data-theme="sk-classic"`, R022): the original beige/sage/Zen Maru Gothic look as a local token block (txt2 + button green nudged darker for AA). Per device only: `localStorage.sukkiri_theme` (absent = Forest Morning), applied by a helmet script before first paint, never in app state or the cloud backup. "Match calendar theme" is a later setting. Local override `--btn:#2e7d32` on theme 9 because its gradient fails AA.
+- Local tokens live in the helmet `<style>` `:root` block: `--sk-accent` (#c2427a, the rose brand accent darkened for AA — decision 2b), `--sk-ok/warn/danger/info` + `-bg`, `--surface-sunken`, `--focus-ring`, `--jp-font` (Zen Maru Gothic, CJK fallback appended to every font stack), `--fs-caps`.
+- **Kept literal on purpose:** print sheets (`isPrint` block + `js/print.js`), the hero room illustration SVG, the Google "G", garbage/`CAL_COL` contract colours, and weather verdict colours from `js/weather.js`.
+- Conversion was scripted (`tokenise.py` in the session scratchpad, mapping per audit §2–4): colours, `font-family`, exact-px radii and the exact-px font sizes 11/12/13/14/15/16/28. Half-pixel sizes stay literal until Phase 1c/2.
 
 ## Planned sync with the Calendar app (`Calender_app/`)
 The calendar app **already has a Sukkiri module**: `Calender_app/js/sukkiri.js`. Sync must match its existing contract, not invent a new one.
