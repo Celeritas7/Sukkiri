@@ -19,7 +19,9 @@
 <link rel="stylesheet" href="_ds/my-calendar-design-system-4b262086-d495-4ab2-b123-7fa71c397820/tokens/shape.css">
 <link rel="stylesheet" href="_ds/my-calendar-design-system-4b262086-d495-4ab2-b123-7fa71c397820/tokens/themes.css">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Zen+Maru+Gothic:wght@500;700;900&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
-<script>document.documentElement.setAttribute('data-theme', '9'); /* Forest Morning, pinned (Phase 1 decision 1a) */</script>
+<!-- Theme: Forest Morning (DS theme 9) by default; "sk-classic" restores the original Sukkiri look.
+     Set before first paint from sukkiri_theme so there is no flash; Settings → Appearance changes it. -->
+<script>(function () { var t = '9'; try { if (localStorage.getItem('sukkiri_theme') === 'sk-classic') t = 'sk-classic'; } catch (e) {} document.documentElement.setAttribute('data-theme', t); })();</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/akatsuki-client.js?v=s4b2"></script>
 <script src="js/adapters/sukkiri-adapter.js?v=s4b2"></script>
@@ -44,6 +46,15 @@
 }
 /* Forest Morning's --btn is a gradient whose white text fails AA (3.3:1); use the theme accent solid (5.1:1). */
 :root[data-theme="9"] { --btn:#2e7d32; --btn-sh:rgba(46,125,50,.35); }
+/* Classic: Sukkiri's original flat beige / sage / rounded-Japanese look, expressed as DS tokens.
+   Secondary grey and button green nudged darker than the old values so text passes AA. */
+:root[data-theme="sk-classic"] {
+  --bg:#f1f2ea; --card-bg:#fcfcf9; --input-bg:#ffffff; --border:#dde0d1;
+  --txt:#3b4038; --txt2:#676d60; --accent:#5c7a58; --btn:#4f6b4b; --btn-sh:rgba(59,64,56,.2);
+  --today-bg:#e0a83a; --wknd:#c0392b; --cell-hover:rgba(59,64,56,.04); --pulse:rgba(92,122,88,.4);
+  --h-font:'Zen Maru Gothic',sans-serif; --b-font:'Nunito',sans-serif;
+  --shadow:0 4px 14px rgba(59,64,56,.06); --sk-shadow-c:rgba(59,64,56,.08);
+}
 html, body { margin:0; padding:0; background:var(--bg); font-family:var(--b-font),var(--jp-font),sans-serif; color:var(--txt); }
 *, *::before, *::after { box-sizing: border-box; }
 a { color:var(--accent); } a:hover { color:var(--sk-accent); }
@@ -411,6 +422,19 @@ html.sk-measure .sk-page { height: auto !important; }
             <sc-if value="{{ cloudSignedOut }}" hint-placeholder-val="{{ false }}">
               <div onClick="{{ openLogin }}" style="cursor:pointer; background:var(--btn); color:#fff; font-size:var(--fs-control); font-weight:800; padding:9px 18px; border-radius:var(--r-pill); white-space:nowrap;" style-hover="background:color-mix(in srgb,var(--btn) 85%,black);">Sign in</div>
             </sc-if>
+          </div>
+        </div>
+
+        <div style="background:var(--card-bg); border:1px solid var(--border); border-radius:var(--r-box); padding:20px 22px; margin-bottom:18px;">
+          <div style="font-family:var(--h-font),var(--jp-font),serif; font-weight:900; font-size:19px; color:var(--txt); margin-bottom:4px;">🎨 Appearance</div>
+          <div style="font-size:var(--fs-stats); color:var(--txt2); font-weight:600; margin-bottom:14px;">Pick the look you like. It only changes this device.</div>
+          <div style="display:flex; flex-wrap:wrap; gap:10px;">
+            <sc-for list="{{ themeOpts }}" as="th" hint-placeholder-count="2">
+              <div onClick="{{ setTheme }}" data-id="{{ th.id }}" style="cursor:pointer; display:flex; align-items:center; gap:10px; padding:10px 16px; border-radius:var(--r-panel); border:2px solid {{ th.border }}; background:{{ th.bg }}; min-width:200px;">
+                <span style="display:flex; gap:3px;"><span style="width:14px; height:14px; border-radius:50%; background:{{ th.sw1 }};"></span><span style="width:14px; height:14px; border-radius:50%; background:{{ th.sw2 }};"></span><span style="width:14px; height:14px; border-radius:50%; background:{{ th.sw3 }};"></span></span>
+                <span><span style="display:block; font-weight:800; font-size:var(--fs-stats); color:var(--txt);">{{ th.label }}</span><span style="display:block; font-size:var(--fs-hint); color:var(--txt2); font-weight:600;">{{ th.sub }}</span></span>
+              </div>
+            </sc-for>
           </div>
         </div>
 
@@ -1357,7 +1381,7 @@ save(patch, entry) {
 
   // ---------- Supabase cloud sync (sukkiri_state) ----------
   SB_URL = 'https://wylxvmkcrexwfpjpbhyy.supabase.co';
-  BUILD = 'sk-20261019-r021';
+  BUILD = 'sk-20261019-r022';
   akLog(...a) { try { if (localStorage.getItem('akatsuki_debug') === '1') console.log('[ak]', ...a); } catch (e) {} }
   SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5bHh2bWtjcmV4d2ZwanBiaHl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2MzkxMDYsImV4cCI6MjA4NDIxNTEwNn0.6Bxo42hx4jwlJGWnfjiTpiDUsYfc1QLTN3YtrU1efak';
 
@@ -2489,7 +2513,22 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
   /* ---------- Settings tab ----------
      app_location is a shared record a future home-profile app will own. Until it sets
      locked:true, Sukkiri is the editor; after that these fields go read-only. */
+  /* Appearance lives in localStorage (sukkiri_theme), not app state: it is per device, the
+     helmet script reads it before first paint, and it must not ride the cloud backup. */
+  themeNow() { return document.documentElement.getAttribute('data-theme') === 'sk-classic' ? 'sk-classic' : '9'; }
+
   settingsVals(S) {
+    const cur = this.themeNow();
+    const themeOpts = [
+      { id: '9', label: 'Forest Morning', sub: 'Matches the calendar design system', sw1: '#2e7d32', sw2: '#dcedc8', sw3: '#c2427a' },
+      { id: 'sk-classic', label: 'Classic', sub: 'The original Sukkiri look', sw1: '#5c7a58', sw2: '#f1f2ea', sw3: '#d95c8a' }
+    ].map(o => ({ ...o, border: o.id === cur ? 'var(--accent)' : 'var(--border)', bg: o.id === cur ? 'color-mix(in srgb,var(--accent) 10%,var(--card-bg))' : 'var(--card-bg)' }));
+    const setTheme = e => {
+      const t = e.currentTarget.dataset.id === 'sk-classic' ? 'sk-classic' : '9';
+      document.documentElement.setAttribute('data-theme', t);
+      try { if (t === '9') localStorage.removeItem('sukkiri_theme'); else localStorage.setItem('sukkiri_theme', t); } catch (er) {}
+      this.forceUpdate();
+    };
     const WX = this.wxApi();
     const loc = S.loc || (WX ? WX.readLoc() : { label: '', lat: 0, lon: 0, tz: 'Asia/Tokyo', ward: '' });
     const locked = !!loc.locked && loc.owner !== 'sukkiri';
@@ -2499,7 +2538,7 @@ good: 'M1.6 5.8h20.8v3H1.6z M5.6 8.8h4.8v7.8H5.6z M13.6 8.8h4.8v7.8h-4.8z',
       const patch = (k === 'lat' || k === 'lon') ? { [k]: parseFloat(v) } : { [k]: v };
       this.setState({ loc: { ...loc, ...patch } });
     };
-    return {
+    return { themeOpts, setTheme,
       isSettings: S.screen === 'settings',
       locLabel: loc.label || '', locLat: loc.lat == null ? '' : String(loc.lat), locLon: loc.lon == null ? '' : String(loc.lon),
       locTz: loc.tz || 'Asia/Tokyo', locWard: loc.ward || '',
