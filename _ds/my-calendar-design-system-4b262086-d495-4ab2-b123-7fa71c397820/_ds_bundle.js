@@ -11,7 +11,7 @@ const __ds_scope = {};
 // app_update/js/app.js
 try { (() => {
 /* ═══════════════ SUPABASE ═══════════════ */
-const sb = window.supabase.createClient('https://wylxvmkcrexwfpjpbhyy.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5bHh2bWtjcmV4d2ZwanBiaHl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2MzkxMDYsImV4cCI6MjA4NDIxNTEwNn0.6Bxo42hx4jwlJGWnfjiTpiDUsYfc1QLTN3YtrU1efak');
+const sb = window.supabase.createClient('https://wylxvmkcrexwfpjpbhyy.supabase.co', 'sb_publishable_e3pDOuxIdstaC7s0a680kQ_R10TrAyv');
 
 /* UID is now dynamic — set after login */
 let UID = null;
