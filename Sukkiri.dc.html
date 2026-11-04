@@ -3,6 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sukkiri</title>
+<!-- Installable + offline (R023): manifest for Android/Chrome, apple-* tags for iPad/iPhone
+     "Add to Home Screen", and sw.js which keeps the app and its libraries on the device. -->
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2e7d32">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sukkiri">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<script>
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function (e) { console.warn('[sukkiri] offline cache unavailable', e); });
+    // Ask the browser not to clear Sukkiri's data under storage pressure (Android honours this).
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {});
+  });
+}
+</script>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -1382,7 +1402,7 @@ save(patch, entry) {
 
   // ---------- Supabase cloud sync (sukkiri_state) ----------
   SB_URL = 'https://wylxvmkcrexwfpjpbhyy.supabase.co';
-  BUILD = 'sk-20261019-r022';
+  BUILD = 'sk-20261104-r023';
   akLog(...a) { try { if (localStorage.getItem('akatsuki_debug') === '1') console.log('[ak]', ...a); } catch (e) {} }
   SB_KEY = 'sb_publishable_e3pDOuxIdstaC7s0a680kQ_R10TrAyv';
 
