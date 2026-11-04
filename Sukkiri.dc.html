@@ -25,6 +25,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/akatsuki-client.js?v=s4b2"></script>
 <script src="js/adapters/sukkiri-adapter.js?v=s4b2"></script>
+<script src="https://celeritas7.github.io/Akatsuki/js/akatsuki-broadcast.js"></script>
 <script src="js/data.js"></script>
 <script src="js/print.js"></script>
 <script src="js/weather.js"></script>
@@ -1383,7 +1384,7 @@ save(patch, entry) {
   SB_URL = 'https://wylxvmkcrexwfpjpbhyy.supabase.co';
   BUILD = 'sk-20261019-r022';
   akLog(...a) { try { if (localStorage.getItem('akatsuki_debug') === '1') console.log('[ak]', ...a); } catch (e) {} }
-  SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind5bHh2bWtjcmV4d2ZwanBiaHl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg2MzkxMDYsImV4cCI6MjA4NDIxNTEwNn0.6Bxo42hx4jwlJGWnfjiTpiDUsYfc1QLTN3YtrU1efak';
+  SB_KEY = 'sb_publishable_e3pDOuxIdstaC7s0a680kQ_R10TrAyv';
 
   cloudState(status, msg, email) {
     this.setState(p => ({ cloud: { status, msg, email: email !== undefined ? email : p.cloud.email } }));
@@ -1393,6 +1394,7 @@ save(patch, entry) {
     for (let i = 0; i < 40 && !(window.supabase && window.supabase.createClient); i++) await new Promise(r => setTimeout(r, 150));
     if (!(window.supabase && window.supabase.createClient)) { this.cloudState('off', 'Cloud library unavailable — local only.'); return; }
     this.sb = window.supabase.createClient(this.SB_URL, this.SB_KEY, { global: { headers: { 'x-akatsuki-app': 'sukkiri' } } });
+    if (window.AkatsukiBroadcast) window.AkatsukiBroadcast(this.sb, 'sukkiri').start();
     for (let i = 0; i < 20 && !window.SukkiriHub; i++) await new Promise(r => setTimeout(r, 150));
     this.skHub = window.SukkiriHub ? window.SukkiriHub(this.sb, { log: (...a) => this.akLog(...a) }) : null;
     window.sukkiri = Object.assign(window.sukkiri || {}, { supabase: this.sb, hub: this.skHub, build: this.BUILD });
