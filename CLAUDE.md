@@ -3,7 +3,13 @@
 Follow AKATSUKI.md for anything touching the hub.
 
 ## Design system
-Bound: **My Calendar Design System** (`_ds/my-calendar-design-system-4b262086.../`). Every DC must load the bundle + token stylesheets in `<helmet>` and use `var(--*)` tokens / DS components. Emoji is the icon system; sentence case; warm second-person voice.
+Bound: **My Calendar Design System** (`_ds/my-calendar-design-system-4b262086.../`). Every DC must load the token stylesheets in `<helmet>` and use `var(--*)` tokens / DS components. Emoji is the icon system; sentence case; warm second-person voice.
+**Phase 1 (R021) decisions — see `docs/phase1-audit.md`:**
+- Load **tokens only** (`tokens/colors|typography|shape|themes.css`). **Never load `_ds_bundle.js`**: it embeds the calendar's `app.js`/`sukkiri.js`, which would open a second Supabase client and bind global key handlers. `tokens/fonts.css` (24 families) is skipped; the helmet requests DM Serif Display + Nunito + Zen Maru Gothic directly.
+- Theme defaults to **`data-theme="9"` Forest Morning** on `<html>` (decision 1a). **Settings → Appearance** offers **Classic** (`data-theme="sk-classic"`, R022): the original beige/sage/Zen Maru Gothic look as a local token block (txt2 + button green nudged darker for AA). Per device only: `localStorage.sukkiri_theme` (absent = Forest Morning), applied by a helmet script before first paint, never in app state or the cloud backup. "Match calendar theme" is a later setting. Local override `--btn:#2e7d32` on theme 9 because its gradient fails AA.
+- Local tokens live in the helmet `<style>` `:root` block: `--sk-accent` (#c2427a, the rose brand accent darkened for AA — decision 2b), `--sk-ok/warn/danger/info` + `-bg`, `--surface-sunken`, `--focus-ring`, `--jp-font` (Zen Maru Gothic, CJK fallback appended to every font stack), `--fs-caps`.
+- **Kept literal on purpose:** print sheets (`isPrint` block + `js/print.js`), the hero room illustration SVG, the Google "G", garbage/`CAL_COL` contract colours, and weather verdict colours from `js/weather.js`.
+- Conversion was scripted (`tokenise.py` in the session scratchpad, mapping per audit §2–4): colours, `font-family`, exact-px radii and the exact-px font sizes 11/12/13/14/15/16/28. Half-pixel sizes stay literal until Phase 1c/2.
 
 ## Planned sync with the Calendar app (`Calender_app/`)
 The calendar app **already has a Sukkiri module**: `Calender_app/js/sukkiri.js`. Sync must match its existing contract, not invent a new one.
@@ -18,7 +24,7 @@ The calendar app **already has a Sukkiri module**: `Calender_app/js/sukkiri.js`.
 - Other calendar tables (for context): `calendar_app_entries`, `calendar_app_diary`, `calendar_app_preferences`, `calendar_app_birthdays`.
 
 ## Cost management app link
-**Hub path (R017, live):** `sendToCostApp()` → `skHub.sendPurchaseRequest()` (kind `purchase_request`, to `cost`). **Per-item send:** shop items carry `sel` (tick) and `reqKey` (the request they went out in); `sendItems(items, mode)` mints one id per send, `reqOpen()` blocks re-sending until Cost answers (rejected releases the item), a failed record is retried under its id. **Auto-request:** refill supplies with `auto:true` → their shop items get `autoReq:true` → `autoSend()` (after sign-in, on `syncSupplies`, 6h tick, on toggle) sends due unsent ones as one request. Local record in `state.costReqs[]` (`key` stable, `id` = `uid('req')` → `req<ms><0-998>`, no hyphen; the latest record's id is always reused — open → hub updates/`skipped`, answered → `closed` → `nextId` = `<id>-2`…; only a brand-new list mints a fresh id). `sent`: hub|queued|error|local; `status` only from Cost's replies via `watchReplies` (started once after sign-in + cloudPull). AK1xx errors shown, never queued; a failed send is retried under the same id. Build id `BUILD` shown in Settings → Account & sync and on the sign-in page; `[ak]` logs when `localStorage.akatsuki_debug = '1'`. `window.sukkiri.{supabase,hub,build}`. Scripts: `js/akatsuki-client.js` (R017) → `js/adapters/sukkiri-adapter.js`. No sw.js (not a PWA).
+**Hub path (R017, live):** `sendToCostApp()` → `skHub.sendPurchaseRequest()` (kind `purchase_request`, to `cost`). **Per-item send:** shop items carry `sel` (tick) and `reqKey` (the request they went out in); `sendItems(items, mode)` mints one id per send, `reqOpen()` blocks re-sending until Cost answers (rejected releases the item), a failed record is retried under its id. **Auto-request:** refill supplies with `auto:true` → their shop items get `autoReq:true` → `autoSend()` (after sign-in, on `syncSupplies`, 6h tick, on toggle) sends due unsent ones as one request. Local record in `state.costReqs[]` (`key` stable, `id` = `uid('req')` → `req<ms><0-998>`, no hyphen; the latest record's id is always reused — open → hub updates/`skipped`, answered → `closed` → `nextId` = `<id>-2`…; only a brand-new list mints a fresh id). `sent`: hub|queued|error|local; `status` only from Cost's replies via `watchReplies` (started once after sign-in + cloudPull). AK1xx errors shown, never queued; a failed send is retried under the same id. Build id `BUILD` shown in Settings → Account & sync and on the sign-in page; `[ak]` logs when `localStorage.akatsuki_debug = '1'`. `window.sukkiri.{supabase,hub,build}`. Scripts: `js/akatsuki-client.js` (R017) → `js/adapters/sukkiri-adapter.js`. Installable PWA since R023 — see "Offline / install" below.
 Legacy `sukkiri_cost_requests` localStorage push + clipboard JSON removed 2026-09-26 after the first confirmed round trip (rejected reply landed). `Cost App Prompt.md` describes that old path — historical only.
 
 ## Phase 0 behaviours (R018; merged with Step 4 hub sync as build `sk-20261019-r019`)
@@ -30,6 +36,12 @@ Legacy `sukkiri_cost_requests` localStorage push + clipboard JSON removed 2026-0
 - Health = 100 − 18/overdue − risk flags (missed 10, clash/stack 6, slipping 3) − 12 if no check-in in 7 d − 10 if `lastPenalty` within 7 d, averaged with the latest report. Hero title "sukkiri" only at ≥ 90.
 - Garbage reminder drops the "this morning" line after 08:30 and rolls to tomorrow's; button is "All collection days".
 - `index.html` is a forwarder to `Sukkiri.dc.html` (keeps query + hash); edit only `Sukkiri.dc.html`.
+
+## Offline / install (R023)
+- Hosted on GitHub Pages: `https://celeritas7.github.io/Sukkiri/` (repo Settings → Pages → main / root). Install from there: Android Chrome "Install app", iPad Safari Share → "Add to Home Screen".
+- `manifest.webmanifest` (start `./Sukkiri.dc.html`, standalone, icons 192/512/180) + `sw.js`, registered from the real `<head>` of `Sukkiri.dc.html` (plus `navigator.storage.persist()`).
+- `sw.js` **`VERSION` must be bumped with every `BUILD`** (AKATSUKI rule). Same-origin files: network-first, cache fallback. unpkg/jsdelivr/Google Fonts/Akatsuki broadcast: stale-while-revalidate, precached in CORS mode so support.js's SRI checks pass offline. Supabase + Open-Meteo: never intercepted. Add any new local script/stylesheet to `SHELL` (with its exact `?v=` query).
+- Each installed copy has its own localStorage (iPad home-screen app ≠ Safari tab); sign in to sync between devices.
 
 ## File layout
 - `Sukkiri.dc.html` — app (template + logic; styles are inline by design, no stylesheet to extract)

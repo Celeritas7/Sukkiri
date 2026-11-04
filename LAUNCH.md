@@ -99,3 +99,30 @@ calendar.
 - **Cleaning intervals are my guesses.** Adjust to how you actually live.
 - **Data lives in this browser.** Clearing site data wipes it. Use the same
   browser and profile, and don't use private windows.
+
+---
+
+## Step 8 — Install on Android and iPad (works offline)
+
+Sukkiri is an installable web app (PWA). It is served from GitHub Pages:
+**https://celeritas7.github.io/Sukkiri/**
+
+**One-time setup (on GitHub):** repo **Settings → Pages → Build and deployment →
+Source: Deploy from a branch → Branch: `main`, folder `/ (root)` → Save.** Wait a
+minute, then open the link above. For Google sign-in, also add
+`https://celeritas7.github.io/Sukkiri/Sukkiri.dc.html` to Supabase → Authentication →
+URL Configuration → Redirect URLs.
+
+**Android (Chrome):** open the link → menu ⋮ → **Install app** (or "Add to Home
+screen"). Sukkiri gets its own icon and opens without the browser bar.
+
+**iPad / iPhone (Safari — must be Safari):** open the link → **Share** button →
+**Add to Home Screen** → Add.
+
+**Offline:** open the installed app once while online. After that it opens and works
+with no connection; changes are saved on the device. Weather, sign-in, backup,
+calendar sync and cost requests need a connection and catch up when you're back
+online (sign in to back up and to share data between your phone, iPad and PC).
+
+**Updates:** open the app while online; the next launch runs the new build
+(check Settings → Account & sync for the build id).
